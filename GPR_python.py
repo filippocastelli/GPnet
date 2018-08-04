@@ -134,6 +134,8 @@ loglikelihood = logPosterior(theta, x,t)
 pl.title('Valore medio e margini a posteriori, (length scale: %.3f , constant scale: %.3f ,\
 #noise variance: %.3f )\n Log-Likelihood: %.3f'
         % (theta[1], theta[0], theta[2], loglikelihood))
+pl.xlabel('nodes')
+pl.ylabel('values')
 pl.savefig('predict.png', bbox_inches='tight')
 pl.axis([-5, 5, -3, 3])
 #%%
@@ -144,6 +146,8 @@ pl.figure(2)
 pl.clf()
 pl.plot(xstar, f_prior)
 pl.title('10 estrazioni dalla dist. a priori')
+pl.xlabel('nodes')
+pl.ylabel('values')
 pl.axis([-5, 5, -3, 3])
 pl.savefig('prior.png', bbox_inches='tight')
 #%%
@@ -156,6 +160,8 @@ pl.figure(3)
 pl.clf()
 pl.plot(xstar, f_post)
 pl.title('10 estrazioni dalla dist. a posteriori')
+pl.xlabel('nodes')
+pl.ylabel('values')
 pl.axis([-5, 5, -3, 3])
 pl.savefig('post.png', bbox_inches='tight')
 
