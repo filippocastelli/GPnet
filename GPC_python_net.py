@@ -187,7 +187,6 @@ def shortest_path_graph_distances(Graph):
 def is_pos_def(x):
     return np.all(np.linalg.eigvals(x) > 0)
 #%%
-
 lattice_m = 15
 lattice_n = 15
 N = 100     # numero punti training
@@ -220,9 +219,7 @@ nodes_dataframe["test_node"] = nodes_dataframe["nodes"].isin(test_nodes)
 nodes_dataframe["test_node"] = nodes_dataframe["nodes"].isin(test_nodes)
 nodes_dataframe["other_node"] = nodes_dataframe["nodes"].isin(othernodes)
 
-
 #%%
-
 #pl.figure(0, dpi=200, figsize=[12,7])
 pl.figure(0, figsize = [10,9])
 #node positions
@@ -240,7 +237,6 @@ blue_patch = mpatches.Patch(color='blue', label='test nodes')
 green_patch = mpatches.Patch(color='green', label='other nodes')
 pl.legend(handles=[red_patch, blue_patch, green_patch])
 
-#uso come funzione di prova la distanza dal nodo 0
 pivot_distance = pd.Series(dict(nx.single_source_shortest_path_length(G,0))).sort_index()
 nodes_dataframe["pivot_distance"] = pivot_distance
 #t = pivot_distance[training_nodes]
@@ -260,28 +256,18 @@ ec = nx.draw_networkx_edges(G, pos, alpha=0.2)
 graph_labels = nx.draw_networkx_labels(G, pos=pos, font_color='w')
 pl.legend(handles=[red_binary_patch, blue_binary_patch])
 #%%
-
 training_labels = binary_labels[training_nodes]
 theta =np.zeros((3,1))
 theta[0] =-2.72
 theta[1] = +4
 theta[2] =-4
-
-
-lengthscale = 1
-constantscale = 1
-
 newtheta = so.fmin_cg(net_logPosterior, theta, fprime=net_gradLogPosterior, args=(G, dist,training_nodes,training_labels), gtol=1e-4,maxiter=1000,disp=1, full_output=0)
 print(newtheta, net_logPosterior(newtheta,G, dist, training_nodes,training_labels))
-#%%
+
 if newtheta.shape == (1,3):
     print("l'ottimizzatore fa i capricci, cambio dimensioni")
     newtheta = newtheta[0]
-    
-
-
-#xstar = np.reshape(np.linspace(-5,5,100),(100,1))
-
+#%%
 kstar = net_kernel(G, dist, test_nodes, training_nodes, newtheta, wantderiv=False,measnoise=False)
 K = net_kernel(G, dist, training_nodes,training_nodes,newtheta,wantderiv=False)
 kstarstar = net_kernel(G, dist, test_nodes,test_nodes, newtheta, wantderiv=False, measnoise=False)
@@ -291,7 +277,6 @@ invk = np.linalg.inv(K)
 mean = np.dot(kstar,np.dot(invk,training_labels))
 var = kstarstar_diag - np.diag(np.dot(kstar,np.dot(invk,kstar.transpose())))
 var = np.reshape(var,(n,1))
-    
 #%%
 xstar_p = np.squeeze(test_nodes)
 mean_p = np.squeeze(mean)
@@ -305,7 +290,6 @@ pl.gca().fill_between(xstar_p,mean_p - 2*s,mean_p +2*s,color="#dddddd")
 latent, = pl.plot(xstar_p, mean, 'r--', lw=2, label = "latent")
 pl.title('')
 
-
 loglikelihood = net_logPosterior(newtheta, G, dist, training_nodes, training_labels)
 pl.title(' Funzione latente \n (length scale: %.3f , constant scale: %.3f ,\
 #noise variance: %.3f )\n Log-Likelihood: %.3f'
@@ -318,24 +302,15 @@ pl.legend(handles = [latent, datapoints])
 pl.savefig('predict.png', bbox_inches='tight')
 #pl.axis([-5, 5, -3, 3])
 #%%
-
-test_predict_nodes = random.sample(test_nodes, ntest)
-test_predict_nodes.sort() 
-tplabels = binary_labels[test_predict_nodes]
-
-#nodes_dataframe["test_predict"] = nodes_dataframe["nodes"].isin(test_predict_nodes)
-
-
 #why is it so slow
 nodes_dataframe["prediction"] = np.nan
 nodes_dataframe.loc[(nodes_dataframe.test_node == True) , "prediction"] = nodes_dataframe.nodes.map(lambda x: net_predict(G, dist,x,training_nodes,training_labels,newtheta))
 nodes_dataframe.loc[nodes_dataframe.prediction.notnull(), "binary_prediction"] = nodes_dataframe.loc[nodes_dataframe.prediction.notnull()].prediction.map(lambda x: 1 if (np.squeeze(x[0]) > 0) else -1)
 
-pred = np.squeeze(np.array([net_predict(G, dist,i,training_nodes,training_labels,newtheta) for i in test_predict_nodes]))
-#output = np.reshape(np.where(pred[:,0]<0,-1,1),(9,1))
-#print(np.sum(np.abs(output-tlabels)))
-#print(pred)
 #%%
+test_predict_nodes = random.sample(test_nodes, ntest)
+test_predict_nodes.sort() 
+tplabels = binary_labels[test_predict_nodes]
 
 testframe = nodes_dataframe[(nodes_dataframe.test_node == True)]
 predictions = testframe.prediction.apply(lambda x: pd.Series(np.squeeze(x)))
@@ -345,8 +320,6 @@ nodes_dataframe.join(how="left", other=predictions)
 pl_frame = testframe.sample(50)
 
 pl.figure()
-#data_up, = pl.plot(training_labels[training_labels==1],'ro',label="data up")
-#data_down, = pl.plot(training_labels[training_labels==-1],'gx', label= "data down")
 data_up, = pl.plot(pl_frame[pl_frame.binary_label==1].nodes, pl_frame[pl_frame.binary_label==1].binary_label,'ro',label="data up")
 data_down, = pl.plot(pl_frame[pl_frame.binary_label==-1].nodes, pl_frame[pl_frame.binary_label==-1].binary_label,'gx',label="data down")
 
@@ -367,18 +340,13 @@ test_down_wrong, = pl.plot(pl_frame[(pl_frame.binary_label==-1)&(pl_frame.binary
 
 pl.legend(handles=[data_up, data_down, test_up_ok, test_down_ok,
                    test_up_wrong, test_down_wrong])
-
-    
+ 
 #%%
-
-#pred2 = np.squeeze(np.array([net_predict(G, dist, np.reshape(i,(1,1)),training_nodes,training_labels,newtheta) for i in test_nodes]))
-nodes_dataframe.prediction[nodes_dataframe.prediction.notnull()]
 xstar_p = np.squeeze(test_nodes)
 mean_p = np.squeeze(mean)
 var_p = np.squeeze(np.reshape(var,(len(test_nodes),1)))
 s = np.sqrt(var_p)
-"""
-"""
+
 pl.figure()
 pl.clf()
 
@@ -394,7 +362,6 @@ datapoints = pl.scatter(training_nodes,training_labels, label = "data points")
 pl.legend(handles = [latent, datapoints])
 #pl.scatter(test,tlabels)
 pl.savefig('predict.png', bbox_inches='tight')
-
 
 #%%
 pl.figure(figsize=[10,9])
