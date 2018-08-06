@@ -256,7 +256,7 @@ pl.figure()
 pl.clf()
 
 pl.gca().fill_between(xstar_p,np.squeeze(pred2[:,0]-np.sqrt(pred2[:,1])),np.squeeze(pred2[:,0]+np.sqrt(pred2[:,1])),color="#dddddd")
-latent, = pl.plot(xstar, mean, 'r--', lw=2, label = "$\sigma(f(x))$")
+latent, = pl.plot(xstar, pred2[:,0], 'r--', lw=2, label = "$\sigma(f(x))$")
 loglikelihood = logPosterior(newtheta, data, labels)
 pl.title('$\sigma(f(x))$ \n (length scale: %.3f , constant scale: %.3f ,\
 #noise variance: %.3f )\n Log-Likelihood: %.3f'
