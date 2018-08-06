@@ -109,8 +109,6 @@ def net_NRiteration(Graph, distmatrix,data,targets,theta):
         # L = cholesky(B)
         L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
         p = np.exp(s)/(np.exp(s) + np.exp(s-f))
-#        if(p.any()<0):
-#            print("FUCSDASDA")
         b = np.dot(W,f) + 0.5*(targets+1) - p
         a = scale*(b - np.dot(sqrtW,np.linalg.solve(L.transpose(),np.linalg.solve(L,np.dot(sqrtW,np.dot(K,b))))))
         f = np.dot(K,a)
