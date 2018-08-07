@@ -1,4 +1,4 @@
-#from __future__ import division
+from __future__ import division
 import numpy as np
 import matplotlib.pyplot as pl
 import matplotlib.patches as mpatches
@@ -6,51 +6,13 @@ import scipy.optimize as so
 import networkx as nx
 import pandas as pd
 import random
-
 #%%
-def kernel(data1,data2,theta,wantderiv=True,measnoise=1.):
-    # Uses exp(theta) to ensure positive hyperparams
-    theta = np.squeeze(theta)
-    theta = np.exp(theta)
-    # Squared exponential
-    if np.ndim(data1) == 1:
-        d1 = np.shape(data1)[0]
-        n = 1
-        data1 = data1*np.ones((d1,1))
-        data2 = data2*np.ones((np.shape(data2)[0],1))
-    else:
-        (d1,n) = np.shape(data1)
-
-    d2 = np.shape(data2)[0]
-    sumxy = np.zeros((d1,d2))
-    for d in range(n):
-        D1 = np.transpose([data1[:,d]]) * np.ones((d1,d2))
-        D2 = [data2[:,d]] * np.ones((d1,d2))
-        sumxy += (D1-D2)**2*theta[d+1]
-
-    k = theta[0] * np.exp(-0.5*sumxy)
-    #k = theta[0]**2 * np.exp(-sumxy/(2.0*theta[1]**2))
-
-    #print k
-    #print measnoise*theta[2]**2*np.eye(d1,d2)
-    if wantderiv:
-        K = np.zeros((d1,d2,len(theta)+1))
-        # K[:,:,0] is the original covariance matrix
-        K[:,:,0] = k + measnoise*theta[2]*np.eye(d1,d2)
-        K[:,:,1] = k
-        K[:,:,2] = -0.5*k*sumxy
-        K[:,:,3] = theta[2]*np.eye(d1,d2)
-        return K
-    else:
-        return k + measnoise*theta[2]*np.eye(d1,d2)
-    
 def int_to_list(nodes):
     if type(nodes) == int:
         return [nodes]
     else:
         return nodes
     
-
 def net_kernel(Graph,graph_distance_matrix, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
     # Uses exp(theta) to ensure positive hyperparams
     nodes_a = int_to_list(nodes_a)
@@ -159,7 +121,6 @@ def net_gradLogPosterior(theta,*args):
 
     return -gradZ
 
-
 def net_predict(Graph, distmatrix, xstar,data,targets,theta):
     K = net_kernel(Graph, distmatrix, data,data,theta,wantderiv=False)
     n = np.shape(targets)[0]
@@ -177,7 +138,6 @@ def net_predict(Graph, distmatrix, xstar,data,targets,theta):
     return (fstar,V)
 
 def shortest_path_graph_distances(Graph):
-    #shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(G))
     shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(Graph))
     dist = pd.DataFrame(shortest_paths_lengths).sort_index(axis=1)
     return dist
@@ -216,7 +176,6 @@ nodes_dataframe["training_node"] = nodes_dataframe["nodes"].isin(training_nodes)
 nodes_dataframe["test_node"] = nodes_dataframe["nodes"].isin(test_nodes)
 nodes_dataframe["test_node"] = nodes_dataframe["nodes"].isin(test_nodes)
 nodes_dataframe["other_node"] = nodes_dataframe["nodes"].isin(othernodes)
-
 #%%
 #pl.figure(0, dpi=200, figsize=[12,7])
 pl.figure(0, figsize = [10,9])
