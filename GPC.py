@@ -130,25 +130,25 @@ def predict(xstar,data,targets,theta):
 #%%
 data = np.array([[-2.1, -2.0, -1.9, -0.1, 0., 0.1, 1.9, 2.0, 2.1 ]]).transpose()
 labels = np.array([[-1., -1., -1., 1., 1., 1., -1., -1., -1. ]]).transpose() 
-theta =np.zeros((3,1))
-theta[0] = 1.04431
- #np.random.rand()*3
-theta[1] = 0.742025
-#np.random.rand()*3
-theta[2] =-2.125
 
-lengthscale = 1
-constantscale = 1
-print("NOW")
+test = np.array([[-2.2, -2.05, -1.8, -0.2, 0.05, 0.15, 1.8, 2.05, 2.01 ]]).transpose()
+tlabels = np.array([[-1., -1., -1., 1., 1., 1., -1., -1., -1. ]]).transpose()
+
+lengthscale = 0.742025
+constantscale = 1.04431
+noise_scale = -2.125
+
+theta =np.zeros((3,1))
+theta[0] = constantscale
+theta[1] = lengthscale
+theta[2] = noise_scale
+
 newtheta = so.fmin_cg(logPosterior, theta, fprime=gradLogPosterior, args=(data,labels), gtol=1e-4,maxiter=100,disp=1, full_output=0)
 print(newtheta, logPosterior(newtheta,data,labels))
 
 if newtheta.shape == (1,3):
     print("l'ottimizzatore fa i capricci, cambio dimensioni")
     newtheta = newtheta[0]
-
-test = np.array([[-2.2, -2.05, -1.8, -0.2, 0.05, 0.15, 1.8, 2.05, 2.01 ]]).transpose()
-tlabels = np.array([[-1., -1., -1., 1., 1., 1., -1., -1., -1. ]]).transpose()
 
 xstar = np.reshape(np.linspace(-5,5,100),(100,1))
 kstar = kernel(xstar, data, newtheta, wantderiv=False,measnoise=False)
