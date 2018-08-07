@@ -29,7 +29,6 @@ def kernel(data1,data2,theta,wantderiv=True,measnoise=1.):
 
     k = theta[0] * np.exp(-0.5*sumxy)
     #k = theta[0]**2 * np.exp(-sumxy/(2.0*theta[1]**2))
-
     #print k
     #print measnoise*theta[2]**2*np.eye(d1,d2)
     if wantderiv:
@@ -58,10 +57,8 @@ def gradLogPosterior(theta,*args):
     theta = np.squeeze(theta)
     d = len(theta)
     K = kernel(data,data,theta,wantderiv=True)
-
     L = np.linalg.cholesky(np.squeeze(K[:,:,0]))
     invk = np.linalg.solve(L.transpose(),np.linalg.solve(L,np.eye(np.shape(data)[0])))
-	
     dlogpdtheta = np.zeros(d)
     for d in range(1,len(theta)+1):
         dlogpdtheta[d-1] = 0.5*np.dot(t.transpose(), np.dot(invk, np.dot(np.squeeze(K[:,:,d]), np.dot(invk,t)))) - 0.5*np.trace(np.dot(invk,np.squeeze(K[:,:,d])))
@@ -81,7 +78,8 @@ t = t.reshape(N,1)
 #%%
 lengthscale = 1
 constantscale = 1
-theta = np.array([1,1,1])
+noise_scale = 1
+theta = np.array([constantscale,lengthscale,  noise_scale])
 
 theta = so.fmin_cg(logPosterior, theta, fprime=gradLogPosterior, args=(x,t), gtol=1e-4,maxiter=100,disp=1)
 #non riesco a replicare la condizione in cui l'ottimizzatore sputa una tupla di vettori
