@@ -6,9 +6,7 @@ import matplotlib.patches as mpatches
 import networkx as nx
 import pandas as pd
 import random
-
 #%%
-   
 def net_logPosterior(theta,*args):
     Graph,distancematrix, data,t = args
     #k = kernel(data,data,theta,wantderiv=False)
@@ -34,6 +32,7 @@ def net_gradLogPosterior(theta,*args):
         dlogpdtheta[d-1] = 0.5*np.dot(t.transpose(), np.dot(invk, np.dot(np.squeeze(K[:,:,d]), np.dot(invk,t)))) - 0.5*np.trace(np.dot(invk,np.squeeze(K[:,:,d])))
 
     return -dlogpdtheta
+
 def shortest_path_graph_distances(Graph):
     #shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(G))
     shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(Graph))
@@ -42,17 +41,6 @@ def shortest_path_graph_distances(Graph):
 
 def squared_exponential(dist, params):
     return params[0]*np.exp(-.5 * (1/params[1]) * dist)
-
-def net_kernelold(nodes_a, nodes_b, Graph, params, graph_distance_matrix):
-    nodelist = list(Graph.nodes)
-    nodeset = set(nodes_a).union(set(nodes_b))
-    nodes_to_drop = [x for x in nodelist if x not in nodeset]
-    cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
-    rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-    p = graph_distance_matrix.drop(cols_to_drop).drop(
-            rows_to_drop, 1)
-    distances = p.values
-    return squared_exponential(distances, params)
 
 def net_kernel(Graph,graph_distance_matrix, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
     # Uses exp(theta) to ensure positive hyperparams
@@ -111,8 +99,6 @@ othernodes.sort()
 
 dist = shortest_path_graph_distances(G)
 #%%
-
-#pl.figure(0, dpi=200, figsize=[12,7])
 pl.figure(0, figsize = [10,9])
 #node positions
 pos = nx.kamada_kawai_layout(G)
@@ -133,7 +119,7 @@ pl.legend(handles=[red_patch, blue_patch, green_patch])
 pivot_distance = pd.Series(dict(nx.single_source_shortest_path_length(G,0))).sort_index()
 t = pivot_distance[training_nodes]
 #%%
-pl.figure(1, figsize=[10,9])
+pl.figure(figsize=[10,9])
 vmin = pivot_distance.min()
 vmax = pivot_distance.max() 
 cmap = pl.cm.inferno_r
@@ -148,13 +134,13 @@ labels = nx.draw_networkx_labels(G, pos=pos, font_color='w')
 #%%
 lengthscale = 1
 constantscale = 1
-theta = np.array([1,1,1])
+noise_scale = 1
+theta = np.array([constantscale, lengthscale, noise_scale])
 
 theta = so.fmin_cg(net_logPosterior, theta, fprime=net_gradLogPosterior, args=(G,dist,training_nodes,t), gtol=1e-5,maxiter=200,disp=1)
 if theta.shape == (1,3):
     print("l'ottimizzatore fa i capricci, cambio dimensioni")
     theta = theta[0]
-
 #%%
 k = net_kernel(G, dist, training_nodes, training_nodes, theta, wantderiv=False)
 assert (is_pos_def(k)), "Autocorrelation Matrix has to be positive-definite, try using a different nework shape, distance metric or kernel"
@@ -170,9 +156,8 @@ var = kstarstar_diag - np.diag(np.dot(kstar,np.dot(invk,kstar.T)))
 var = np.squeeze(np.reshape(var,(n,1)))
 s = np.sqrt(var)
 #%%
-
 # PLOTS:
-pl.figure(2)
+pl.figure()
 pl.clf()
 pl.plot(training_nodes, pivot_distance[training_nodes], 'r+', ms=20)
 pl.plot(pivot_distance)
@@ -187,7 +172,6 @@ pl.xlabel('nodes')
 pl.ylabel('values')
 pl.savefig('predict.png', bbox_inches='tight')
 #pl.axis([-5, 5, -3, 3])
-
 #%%
 L2 = np.linalg.cholesky(kstarstar + 1e-6*np.eye(n))
 #f_prior = mu L*N(0,1)
@@ -201,7 +185,6 @@ pl.ylabel('values')
 #pl.axis([-5, 5, -3, 3])
 pl.savefig('prior.png', bbox_inches='tight')
 #%%
-
 Lk = np.linalg.solve(L, kstar.T)
 L2 = np.linalg.cholesky(kstarstar+ 1e-6*np.eye(n) - np.dot(Lk.T, Lk))
 
@@ -215,9 +198,7 @@ pl.xlabel('nodes')
 pl.ylabel('values')
 #pl.axis([-5, 5, -3, 3])
 pl.savefig('post.png', bbox_inches='tight')
-
 #%%
-
 pl.figure(5, figsize=[10,9])
 #pl.figure(2,dpi=200, figsize=[12,7])
 
