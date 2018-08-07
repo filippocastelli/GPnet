@@ -41,8 +41,7 @@ def kernel(data1,data2,theta,wantderiv=True,measnoise=1.):
         return K
     else:
         return k + measnoise*theta[2]*np.eye(d1,d2)
-    
-    
+
 def logPosterior(theta,*args):
     data,t = args
     k = kernel(data,data,theta,wantderiv=False)
@@ -64,7 +63,6 @@ def gradLogPosterior(theta,*args):
         dlogpdtheta[d-1] = 0.5*np.dot(t.transpose(), np.dot(invk, np.dot(np.squeeze(K[:,:,d]), np.dot(invk,t)))) - 0.5*np.trace(np.dot(invk,np.squeeze(K[:,:,d])))
 
     return -dlogpdtheta
-
 #%%
 N = 10         # numero punti training
 n = 500       # numeroy punti test
@@ -80,15 +78,14 @@ lengthscale = 1
 constantscale = 1
 noise_scale = 1
 theta = np.array([constantscale,lengthscale,  noise_scale])
-
+#optimize theta
 theta = so.fmin_cg(logPosterior, theta, fprime=gradLogPosterior, args=(x,t), gtol=1e-4,maxiter=100,disp=1)
 #non riesco a replicare la condizione in cui l'ottimizzatore sputa una tupla di vettori
 # apparentemente è casuale
 if theta.shape == (1,3):
     print("l'ottimizzatore fa i capricci, cambio dimensioni")
     theta = theta[0]
-    
-
+#%%
 k = kernel(x,x,theta,wantderiv=False)
 #kstar = [kernel(x,xs*np.ones((1,1)),theta,wantderiv=False,measnoise=False) for xs in xstar]
 #kstar = np.squeeze(kstar)
@@ -97,29 +94,14 @@ kstarstar = kernel(xstar,xstar,theta,wantderiv=False)
 #kstarstar_diag = [kernel(xs*np.ones((1,1)),xs*np.ones((1,1)),theta,wantderiv=False,measnoise=False) for xs in xstar]
 #kstarstar_diag = np.squeeze(kstarstar_diag)
 kstarstar_diag = np.diag(kstarstar)
-
-#%%
-"""
-k = kernel(x,x,theta,wantderiv=False)
-kstar = [kernel(x,xs*np.ones((1,1)),theta,wantderiv=False,measnoise=False) for xs in xstar]
-kstar = np.squeeze(kstar)
-#kstar = kernel(x,xstar, theta, wantderiv=False, measnoise=False)
-kstarstar = kernel(xstar,xstar,theta,wantderiv=False)
-kstarstar_diag = [kernel(xs*np.ones((1,1)),xs*np.ones((1,1)),theta,wantderiv=False,measnoise=False) for xs in xstar]
-kstarstar_diag = np.squeeze(kstarstar_diag)
-#kstarstar_diag = np.diag(kstarstar)
-"""
-
 #%%
 L = np.linalg.cholesky(k)
 invk = np.linalg.solve(L.transpose(),np.linalg.solve(L,np.eye(np.shape(x)[0])))
-
 mean = np.squeeze(np.dot(kstar,np.dot(invk,t)))
 var = kstarstar_diag - np.diag(np.dot(kstar,np.dot(invk,kstar.T)))
 var = np.squeeze(np.reshape(var,(n,1)))
 s = np.sqrt(var)
 #%%
-
 # PLOTS:
 pl.figure(1)
 pl.clf()
@@ -151,7 +133,6 @@ pl.savefig('prior.png', bbox_inches='tight')
 #%%
 Lk = np.linalg.solve(L, kstar.T)
 L2 = np.linalg.cholesky(kstarstar+ 1e-6*np.eye(n) - np.dot(Lk.T, Lk))
-
 #f_post = mu + L*N(0,1)
 f_post = mean.reshape(-1,1) + np.dot(L2, np.random.normal(size=(n,10)))
 pl.figure(3)
@@ -162,5 +143,4 @@ pl.xlabel('nodes')
 pl.ylabel('values')
 pl.axis([-5, 5, -3, 3])
 pl.savefig('post.png', bbox_inches='tight')
-
 #%%
