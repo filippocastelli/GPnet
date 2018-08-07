@@ -2,3 +2,4 @@
 *.png
 notebooks/.ipynb_checkpoints/GPR-checkpoint.ipynb
 notebooks/.ipynb_checkpoints/GPC-checkpoint.ipynb
+notebooks/.ipynb_checkpoints/GPRnet-checkpoint.ipynb
