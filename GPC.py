@@ -4,7 +4,6 @@ import matplotlib.pyplot as pl
 import scipy.optimize as so
 #%%
 def kernel(data1,data2,theta,wantderiv=True,measnoise=1.):
-    # Uses exp(theta) to ensure positive hyperparams
     theta = np.squeeze(theta)
     theta = np.exp(theta)
     # Squared exponential

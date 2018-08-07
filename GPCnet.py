@@ -14,7 +14,6 @@ def int_to_list(nodes):
         return nodes
     
 def net_kernel(Graph,graph_distance_matrix, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
-    # Uses exp(theta) to ensure positive hyperparams
     nodes_a = int_to_list(nodes_a)
     nodes_b = int_to_list(nodes_b)
     theta = np.squeeze(theta)

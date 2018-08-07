@@ -43,7 +43,6 @@ def squared_exponential(dist, params):
     return params[0]*np.exp(-.5 * (1/params[1]) * dist)
 
 def net_kernel(Graph,graph_distance_matrix, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
-    # Uses exp(theta) to ensure positive hyperparams
     theta = np.squeeze(theta)
     theta = np.exp(theta)
     #graph_distance_matrix = shortest_path_graph_distances(Graph)

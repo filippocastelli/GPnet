@@ -8,7 +8,6 @@ f = lambda x: np.cos(.7*x).flatten()
 #f = lambda x: np.tan(0.9*x).flatten()
 #%%
 def kernel(data1,data2,theta,wantderiv=True,measnoise=1.):
-    # Uses exp(theta) to ensure positive hyperparams
     theta = np.squeeze(theta)
     theta = np.exp(theta)
     # Squared exponential
