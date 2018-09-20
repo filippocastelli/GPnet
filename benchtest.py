@@ -82,44 +82,127 @@ def net_kernel(Graph,graph_distance_matrix, nodes_a,nodes_b,theta,measnoise=1., 
     
 def is_pos_def(x):
     return np.all(np.linalg.eigvals(x) > 0)
+
+def assign_nodes(Graph, N, n, seed=0):
+    #training_nodes = list(G.nodes)[0:N]
+    random.seed(seed)
+    training_nodes = random.sample(list(Graph.nodes), N)
+    training_nodes.sort()
+    
+    #test_nodes = list(G.nodes)[N:N+n]
+    test_nodes = random.sample((set(Graph.nodes) - set(training_nodes)), n)
+    test_nodes.sort()
+    
+    othernodes = set(Graph.nodes) - set(training_nodes) - set(test_nodes)
+    othernodes = list(othernodes)
+    othernodes.sort()
+    
+    return [training_nodes, test_nodes, othernodes]
+
+
+class GPnetRegressor:
+    def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90, deg=4, train_values=False, seed=0, training_nodes=False, test_nodes=False, other_nodes=False):
+        
+        
+        self.N = ntrain
+        self.n = ntest
+        self.deg = deg
+        
+        self.seed=0
+        if totnodes==False:
+            self.totnodes = self.N + self.n
+        else:
+            self.totnodes = totnodes
+            
+        
+        if Graph==False:
+            G = nx.random_regular_graph(deg, totnodes)
+            self.Graph = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
+            
+        else:
+            self.Graph = Graph
+            self.training_nodes = training_nodes
+            self.test_nodes = test_nodes
+            self.other_nodes = other_nodes
+        
+        if training_nodes == False or test_nodes == False:
+            print("assigning nodes randomly")
+            print(self.N, " training nodes")
+            print(self.n ,  " test nodes")
+            print((self.totnodes - (self.N + self.n)), " idle nodes")
+           
+            self.assign_nodes()
+        
+        if train_values == False:
+            pvtdist = self.pivot_distance(0)
+            self.t = pvtdist[self.training_nodes]
+        else:
+            self.t = train_values
+            
+        self.calc_shortest_paths()
+            
+             
+    def pivot_distance(self, pivot=0):
+        pivot_distance = pd.Series(dict(nx.single_source_shortest_path_length(self.Graph,pivot))).sort_index()
+        return pivot_distance
+       
+    def calc_shortest_paths(self):
+        #shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(G))
+        shortest_paths_lengths = dict(nx.all_pairs_shortest_path_length(self.Graph))
+        self.dist = pd.DataFrame(shortest_paths_lengths).sort_index(axis=1)
+        return
+        
+    def assign_nodes(self):
+        
+        if self.N + self.n > self.totnodes:
+            raise ValueError("tot. nodes cannot be less than training nodes + test nodes")
+        #training_nodes = list(G.nodes)[0:N]
+        random.seed(self.seed)
+        self.training_nodes = random.sample(list(self.Graph.nodes), self.N)
+        self.training_nodes.sort()
+        
+        #test_nodes = list(G.nodes)[N:N+n]
+        self.test_nodes = random.sample((set(self.Graph.nodes) - set(self.training_nodes)), self.n)
+        self.test_nodes.sort()
+        
+        self.other_nodes = set(self.Graph.nodes) - set(self.training_nodes) - set(self.test_nodes)
+        self.other_nodes = list(self.other_nodes)
+        self.other_nodes.sort()
+        return
+
+    def plot(self):
+        pl.figure(figsize = [10,9])
+        #node positions
+        self.plot_pos = nx.kamada_kawai_layout(self.Graph)
+        #draw nodes
+        nx.draw_networkx_nodes(self.Graph, self.plot_pos, with_labels=True, node_size=200, nodelist=self.training_nodes, node_color="r")
+        nx.draw_networkx_nodes(self.Graph, self.plot_pos, with_labels=True, node_size=200, nodelist=self.test_nodes, node_color="g")
+        nx.draw_networkx_nodes(self.Graph, self.plot_pos, with_labels=True, node_size=200, nodelist=self.other_nodes, node_color="b")
+        #draw edges
+        ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
+        #legend
+        labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color='k')
+        red_patch = mpatches.Patch(color='red', label='training nodes')
+        blue_patch = mpatches.Patch(color='blue', label='test nodes')
+        green_patch = mpatches.Patch(color='green', label='other nodes')
+        pl.legend(handles=[red_patch, blue_patch, green_patch])
+        
+
 #%%
-lattice_m = 15
-lattice_n = 15
 N = 100     # numero punti training
 n = 90    # numero punti test
 deg = 4 #connectivity degree
 #%%
-G = nx.random_regular_graph(deg, N+n + 10)
+
+G = nx.random_regular_graph(4, N+n + 10)
 #G = nx.generators.lattice.grid_graph(dim = [lattice_m,lattice_n],periodic= False)
 G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
-random.seed(0)
 
-#training_nodes = list(G.nodes)[0:N]
-training_nodes = random.sample(list(G.nodes), N)
-training_nodes.sort()
-
-#test_nodes = list(G.nodes)[N:N+n]
-test_nodes = random.sample((set(G.nodes) - set(training_nodes)), n)
-test_nodes.sort()
-
-othernodes = set(G.nodes) - set(training_nodes) - set(test_nodes)
-othernodes = list(othernodes)
-othernodes.sort()
-
-dist = shortest_path_graph_distances(G)
-#%%
-#uso come funzione di prova la distanza dal nodo 0
-pivot_distance = pd.Series(dict(nx.single_source_shortest_path_length(G,0))).sort_index()
-t = pivot_distance[training_nodes]
 
 #%%
-lengthscale = 1
 lengthscales = np.linspace(0.001, 100,   5)
-constantscale = 1
 constantscales = np.linspace(0, 1, 5)
-noise_scale = -10
 noisescales = np.linspace(0.0001, 100, 5)
-theta = np.array([constantscale, lengthscale, noise_scale])
 
 
 dataframe = pd.DataFrame(columns = ["LengthScale", "ConstantScale", "Noise_Scale", "K", "K**"])
@@ -135,23 +218,4 @@ for l_scale in lengthscales:
             dataframe.loc[len(dataframe)] = [l_scale, c_scale, n_scale, is_pos_def(k), is_pos_def(kstarstar)]
             
             
-#%%
-k = net_kernel(G, dist, training_nodes, training_nodes, theta, wantderiv=False)
-kstar = net_kernel(G, dist, test_nodes, training_nodes, theta, wantderiv=False)
-kstarstar = net_kernel(G, dist, test_nodes, test_nodes,theta, wantderiv=False)
-kstarstar_diag = np.diag(kstarstar)
-#%%
-L = np.linalg.cholesky(k)
-invk = np.linalg.solve(L.transpose(),np.linalg.solve(L,np.eye(len(training_nodes))))
-
-mean = np.squeeze(np.dot(kstar,np.dot(invk,t)))
-var = kstarstar_diag - np.diag(np.dot(kstar,np.dot(invk,kstar.T)))
-var = np.squeeze(np.reshape(var,(n,1)))
-s = np.sqrt(var)
-
-#pl.axis([-5, 5, -3, 3])
-#%%
-#L2 = np.linalg.cholesky(kstarstar + 1e-6*np.eye(n))
-#Lk = np.linalg.solve(L, kstar.T)
-#L2 = np.linalg.cholesky(kstarstar+ 1e-6*np.eye(n) - np.dot(Lk.T, Lk))
 
