@@ -116,6 +116,9 @@ class GPnetRegressor:
             
         
         if Graph==False:
+            print("> Initializing Random Regular Graph")
+            print(self.totnodes, "nodes")
+            print("node degree", self.deg)
             G = nx.random_regular_graph(deg, totnodes)
             self.Graph = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
             
@@ -126,7 +129,7 @@ class GPnetRegressor:
             self.other_nodes = other_nodes
         
         if training_nodes == False or test_nodes == False:
-            print("assigning nodes randomly")
+            print("> Assigning Nodes Randomly ( seed =", self.seed, ")")
             print(self.N, " training nodes")
             print(self.n ,  " test nodes")
             print((self.totnodes - (self.N + self.n)), " idle nodes")
