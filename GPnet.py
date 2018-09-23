@@ -95,7 +95,7 @@ class GPnet:
         
     def net_kernel(self, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
         theta = np.squeeze(theta)
-        #theta = np.exp(theta)
+        theta = np.exp(theta)
         #graph_distance_matrix = shortest_path_graph_distances(Graph)
         nodelist = list(self.Graph.nodes)
         nodeset = set(nodes_a).union(set(nodes_b))
@@ -103,24 +103,28 @@ class GPnet:
         cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
         p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        distances =theta[1]*p.values**2
+        distances =(p.values/theta[1])**2
         
         d1 = len(nodes_a)
         d2 = len(nodes_b)
       
-        k = 2 +theta[0] * np.exp(-0.5*distances)
+        #k = 2 +theta[0] * np.exp(-0.5*distances)
+        k = (theta[0]**2) * np.exp(-0.5*distances)
+        
         
         if wantderiv:
             K = np.zeros((d1,d2,len(theta)+1))
             # K[:,:,0] is the original covariance matrix
             K[:,:,0] = k + measnoise*theta[2]*np.eye(d1,d2)
-            K[:,:,1] = k
-            K[:,:,2] = -0.5*k*distances
+            K[:,:,1] = 2*k
+            K[:,:,2] = (k*distances)/theta[1]
             K[:,:,3] = theta[2]*np.eye(d1,d2)
             return K
         else:
             return k + measnoise*theta[2]*np.eye(d1,d2)
         
+        
+
     def logp(self):
         return self.net_logPosterior(self.theta, self.training_nodes, self.t)
     
@@ -184,6 +188,12 @@ class GPnet:
             pl.savefig(filename, bbox_inches='tight')
             
             
+    def int_to_list(nodes):
+        if type(nodes) == int:
+            return [nodes]
+        else:
+            return nodes
+            
 
 class GPnetRegressor(GPnet):
        
@@ -220,7 +230,7 @@ class GPnetRegressor(GPnet):
         
         print("succesfully trained model")
     
-    def net_logPosterior(self, theta,*args):
+    def oldnet_logPosterior(self, theta,*args):
         data,t = args
         k = self.net_kernel(data,data,theta,wantderiv=False)
         if self.is_pos_def(k) == False:
@@ -229,8 +239,29 @@ class GPnetRegressor(GPnet):
         beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
         logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
         return -logp
-
-    def net_gradLogPosterior(self, theta,*args):
+    
+    def net_logPosterior(self,theta,*args):
+        data,t = args
+        k = self.net_kernel(data,data,theta,wantderiv=False)
+        try:
+            L = np.linalg.cholesky(k)  # Line 2
+        except np.linalg.LinAlgError:
+            return -np.inf
+           # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
+    
+        #L = np.linalg.cholesky(k)
+        alpha = np.linalg.solve(L, t )
+        
+        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t, alpha)
+        log_likelihood_dims -= np.log(np.diag(L)).sum()
+        log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
+        logp = log_likelihood_dims.sum(-1)  # sum over dimensions
+        #beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
+        #logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
+        return -logp
+    
+    
+    def oldnet_gradLogPosterior(self, theta,*args):
         data,t = args
         theta = np.squeeze(theta)
         d = len(theta)
@@ -245,6 +276,31 @@ class GPnetRegressor(GPnet):
             dlogpdtheta[d-1] = 0.5*np.dot(t.transpose(),np.dot(invk, np.dot(np.squeeze(K[:,:,d]),np.dot(invk,t)))) - 0.5*np.trace(np.dot(invk,np.squeeze(K[:,:,d])))
     
         return -dlogpdtheta
+
+
+    def net_gradLogPosterior(self, theta,*args):
+        data,t = args
+        theta = np.squeeze(theta)
+        k = self.net_kernel(data,data,theta,wantderiv=True)
+        try:
+            L = np.linalg.cholesky(k[:,:,0])  # Line 2
+        except np.linalg.LinAlgError:
+            return -np.inf
+           # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
+    
+        #L = np.linalg.cholesky(k)
+        alpha = np.linalg.solve(L, t )
+        tmp = np.einsum("ik,jk->ijk", alpha, alpha)  # k: output-dimension
+        tmp -= np.linalg.solve(L, np.eye(k.shape[0]))[:, :, np.newaxis]
+        # Compute "0.5 * trace(tmp.dot(K_gradient))" without
+        # constructing the full matrix tmp.dot(K_gradient) since only
+        # its diagonal is required
+        log_likelihood_gradient_dims = \
+            0.5 * np.einsum("ijl,ijk->kl", tmp, k[:,:,1:])
+        log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
+        
+        return -log_likelihood_gradient
+    
     
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
         if self.optimize_flag == True:
@@ -300,3 +356,98 @@ class GPnetRegressor(GPnet):
         if type(filename) is str:
             pl.savefig(filename, bbox_inches='tight')
         return self
+    
+    
+class GPnetClassifier(GPnet):
+    
+    def net_logPosterior(self,theta,*args):
+        Graph, distmatrix,data,targets = args
+        (f,logq,a) = self.net_NRiteration(Graph, distmatrix, data,targets,theta)
+        return -logq
+
+    def net_NRiteration(self, data,targets,theta, tol=0.1, phif=1e100, scale=1.):
+        #print("iteration")
+        #pag 46 RASMUSSEN-WILLIAMS
+        K = self.net_kernel( data, data, theta, wantderiv=False)
+        #K = net_kernel(data,data,theta,wantderiv=False)
+        n = np.shape(targets)[0]
+        f = np.zeros((n,1))
+#        tol = 0.1
+#        phif = 1e100
+#        scale = 1.
+        count = 0
+        targets = targets.values.reshape(n,1)
+        while True:	
+            
+            count += 1
+            s = np.where(f<0,f,0)
+            W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
+            sqrtW = np.sqrt(W)
+            # L = cholesky(B)
+            L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
+            p = np.exp(s)/(np.exp(s) + np.exp(s-f))
+            b = np.dot(W,f) + 0.5*(targets+1) - p
+            a = scale*(b - np.dot(sqrtW,np.linalg.solve(L.transpose(),np.linalg.solve(L,np.dot(sqrtW,np.dot(K,b))))))
+            f = np.dot(K,a)
+            oldphif = phif
+            phif = np.log(p) -0.5*np.dot(f.transpose(),np.dot(np.linalg.inv(K),f)) - 0.5*np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
+            #print(phif)
+            #print("loop",np.sum((oldphif-phif)**2))
+            if (np.sum((oldphif-phif)**2) < tol):	
+                break
+            elif (count > 100):
+                count = 0
+                scale = scale/2.
+    	
+        s = -targets*f
+        ps = np.where(s>0,s,0)
+        #logq = -0.5*np.dot(a.transpose(),f) -np.sum(np.log(ps+np.log(np.exp(-ps) + np.exp(s-ps)))) - np.trace(np.log(L))
+        logq = -0.5*np.dot(a.transpose(),f) -np.sum(np.log(ps+np.log(np.exp(-ps) + np.exp(s-ps)))) - sum(np.log(L.diagonal()))
+        return (f,logq,a)
+
+
+    def net_gradLogPosterior(self, theta,*args):
+        data,targets = args
+        theta = np.squeeze(theta)
+        n = np.shape(targets)[0]
+        K = self.net_kernel(data, data, theta, wantderiv=True)
+        # K = kernel(data,data,theta,wantderiv=True)
+        (f,logq,a) = self.net_NRiteration(data,targets,theta)
+        s = np.where(f<0,f,0)
+        W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
+        sqrtW = np.sqrt(W)
+        L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K[:,:,0],sqrtW)))
+        
+        R = np.dot(sqrtW,np.linalg.solve(L.transpose(),np.linalg.solve(L,sqrtW)))
+        C = np.linalg.solve(L,np.dot(sqrtW,K[:,:,0]))
+        p = np.exp(s)/(np.exp(s) + np.exp(s-f))
+        hess = -np.exp(2*s - f) / (np.exp(s) + np.exp(s-f))**2
+        s2 = -0.5*np.dot(np.diag(np.diag(K[:,:,0]) - np.diag(np.dot(C.transpose(),C))) , 2*hess*(0.5-p))
+        
+        targets = targets.values.reshape(n,1)
+    
+        gradZ = np.zeros(len(theta))
+        for d in range(1,len(theta)+1):
+            s1 = 0.5*(np.dot(a.transpose(),np.dot(K[:,:,d],a))) - 0.5*np.trace(np.dot(R,K[:,:,d]))	
+            b = np.dot(K[:,:,d],(targets+1)*0.5-p)
+            p = np.exp(s)/(np.exp(s) + np.exp(s-f))
+            s3 = b - np.dot(K[:,:,0],np.dot(R,b))
+            gradZ[d-1] = s1 + np.dot(s2.transpose(),s3)
+
+        return -gradZ
+
+    def net_predict(self, xstar,data,targets,theta):
+        K = self.net_kernel(data,data,theta,wantderiv=False)
+        n = np.shape(targets)[0]
+        kstar = self.net_kernel(data,xstar,theta,wantderiv=False,measnoise=0)
+        (f,logq,a) = self.net_NRiteration(data,targets,theta)
+        targets = targets.values.reshape(n,1)
+        s = np.where(f<0,f,0)
+        W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
+        sqrtW = np.sqrt(W)
+        L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
+        p = np.exp(s)/(np.exp(s) + np.exp(s-f))
+        fstar = np.dot(kstar.transpose(), (targets+1)*0.5 - p)
+        v = np.linalg.solve(L,np.dot(sqrtW,kstar))	
+        V = self.net_kernel(xstar,xstar,theta,wantderiv=False,measnoise=0)-np.dot(v.transpose(),v) 
+        return (fstar,V)
