@@ -9,10 +9,8 @@ import random
 
 #%%
 class GPnet:
-    def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90,
-                     deg=4, train_values=False, seed=0, training_nodes=False, 
-                     test_nodes=False, theta = [0.1, 0.1, 0.1],
-                     optimize=False):
+    def __init__(self, Graph, totnodes, ntrain, ntest,deg, seed, training_nodes, training_values,
+                     test_nodes, theta,optimize):
             self.N = ntrain
             self.n = ntest
             self.deg = deg
@@ -49,13 +47,6 @@ class GPnet:
                
                 self.random_assign_nodes()
             
-            self.pivot_flag = False
-            if train_values == False:
-                self.pivot_flag = True
-                self.pvtdist = self.pivot_distance(0)
-                self.t = self.pvtdist[self.training_nodes]
-            else:
-                self.t = train_values
                 
             self.calc_shortest_paths()
             
@@ -93,7 +84,7 @@ class GPnet:
     def is_pos_def(self,test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
         
-    def net_kernel(self, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
+    def kernel(self, nodes_a,nodes_b,theta,measnoise=1., wantderiv=True, print_theta=False):
         theta = np.squeeze(theta)
         theta = np.exp(theta)
         #graph_distance_matrix = shortest_path_graph_distances(Graph)
@@ -126,7 +117,7 @@ class GPnet:
         
 
     def logp(self):
-        return -self.net_logPosterior(self.theta, self.training_nodes, self.t)
+        return -self.logPosterior(self.theta, self.training_nodes, self.t)
     
     
     def plot_graph(self, filename=False):
@@ -196,17 +187,29 @@ class GPnet:
             
 
 class GPnetRegressor(GPnet):
+    def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90,
+                     deg=4, seed=0, training_nodes=False, train_values=False, training_values=False,
+                     test_nodes=False, theta = [0.1, 0.1, 0.1],
+                     optimize=False):
+        super(GPnetRegressor, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,train_values, test_nodes, theta, optimize)
+        self.pivot_flag = False
+        if train_values == False:
+            self.pivot_flag = True
+            self.pvtdist = self.pivot_distance(0)
+            self.t = self.pvtdist[self.training_nodes]
+        else:
+            self.t = train_values
        
-    def train_model(self):
+    def predict(self):
         self.optimize_params()
         
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
         #self.mean_t = np.mean(self.t)
-        self.k =self.net_kernel(nodes_a = self.training_nodes, nodes_b = self.training_nodes, theta = self.theta, wantderiv=False)
+        self.k =self.kernel(nodes_a = self.training_nodes, nodes_b = self.training_nodes, theta = self.theta, wantderiv=False)
 
-        self.kstar = self.net_kernel(nodes_a = self.test_nodes, nodes_b=self.training_nodes, theta = self.theta, wantderiv=False, measnoise=False)
-        self.kstarstar = self.net_kernel(nodes_a = self.test_nodes, nodes_b = self.test_nodes,theta = self.theta, wantderiv=False)
+        self.kstar = self.kernel(nodes_a = self.test_nodes, nodes_b=self.training_nodes, theta = self.theta, wantderiv=False, measnoise=False)
+        self.kstarstar = self.kernel(nodes_a = self.test_nodes, nodes_b = self.test_nodes,theta = self.theta, wantderiv=False)
 
         self.kstarstar_diag = np.diag(self.kstarstar)
         
@@ -230,9 +233,9 @@ class GPnetRegressor(GPnet):
         
         print("succesfully trained model")
     
-    def oldnet_logPosterior(self, theta,*args):
+    def oldlogPosterior(self, theta,*args):
         data,t = args
-        k = self.net_kernel(data,data,theta,wantderiv=False)
+        k = self.kernel(data,data,theta,wantderiv=False)
         if self.is_pos_def(k) == False:
             return +999
         L = np.linalg.cholesky(k)
@@ -240,9 +243,9 @@ class GPnetRegressor(GPnet):
         logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
         return -logp
     
-    def net_logPosterior(self,theta,*args):
+    def logPosterior(self,theta,*args):
         data,t = args
-        k = self.net_kernel(data,data,theta,wantderiv=False)
+        k = self.kernel(data,data,theta,wantderiv=False)
         try:
             L = np.linalg.cholesky(k)  # Line 2
         except np.linalg.LinAlgError:
@@ -263,12 +266,12 @@ class GPnetRegressor(GPnet):
         return -logp
     
     
-    def oldnet_gradLogPosterior(self, theta,*args):
+    def oldgradLogPosterior(self, theta,*args):
         data,t = args
         theta = np.squeeze(theta)
         d = len(theta)
         #K = kernel(data,data,theta,wantderiv=True)
-        K = self.net_kernel(data, data, theta, wantderiv=True)
+        K = self.kernel(data, data, theta, wantderiv=True)
     
         L = np.linalg.cholesky(np.squeeze(K[:,:,0]))
         invk = np.linalg.solve(L.transpose(),np.linalg.solve(L,np.eye(np.shape(data)[0])))
@@ -280,10 +283,10 @@ class GPnetRegressor(GPnet):
         return -dlogpdtheta
 
 
-    def net_gradLogPosterior(self, theta,*args):
+    def gradLogPosterior(self, theta,*args):
         data,t = args
         theta = np.squeeze(theta)
-        k = self.net_kernel(data,data,theta,wantderiv=True)
+        k = self.kernel(data,data,theta,wantderiv=True)
         try:
             L = np.linalg.cholesky(k[:,:,0])  # Line 2
         except np.linalg.LinAlgError:
@@ -306,8 +309,8 @@ class GPnetRegressor(GPnet):
     
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
         if self.optimize_flag == True:
-            self.theta = so.fmin_cg(self.net_logPosterior, self.theta, 
-                                    fprime=self.net_gradLogPosterior, 
+            self.theta = so.fmin_cg(self.logPosterior, self.theta, 
+                                    fprime=self.gradLogPosterior, 
                                     args=(self.training_nodes,self.t), 
                                     gtol=gtol,maxiter=200,disp=1)
         return self
@@ -328,7 +331,7 @@ class GPnetRegressor(GPnet):
         pl.plot(self.test_nodes, self.mean, 'ro', ms=4)
         pl.plot(self.test_nodes, self.mean, 'r--', lw=2)
         pl.title('Valore medio e margini di confidenza')
-        loglikelihood = self.net_logPosterior(self.theta,self.training_nodes,self.t)
+        loglikelihood = self.logPosterior(self.theta,self.training_nodes,self.t)
         pl.title('Valore medio e margini a posteriori, (length scale: %.3f , constant scale: %.3f ,\
                                                         #noise variance: %.3f )\n Log-Likelihood: %.3f'
                                                         % (self.theta[1], self.theta[0], self.theta[2], loglikelihood))
@@ -362,16 +365,32 @@ class GPnetRegressor(GPnet):
     
 class GPnetClassifier(GPnet):
     
-    def net_logPosterior(self,theta,*args):
+    
+    def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90,
+                 deg=4, seed=0, training_nodes=False, train_values=False, training_values=False,
+                 test_nodes=False, theta = [0.1, 0.1, 0.1],
+                 optimize=False):
+        super(GPnetClassifier, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,train_values, test_nodes, theta, optimize)
+        self.pivot_flag = False
+        if train_values == False:
+            self.pivot_flag = True
+            self.pvtdist = self.pivot_distance(0)
+            self.t = self.pvtdist[self.training_nodes]
+            self.binary_labels = (np.sin(0.5*self.pvtdist)>0).replace({True: 1, False: -1})
+            self.training_labels = self.binary_labels[self.training_nodes]
+        else:
+                self.training_labels = train_values
+                
+    def logPosterior(self,theta,*args):
         Graph, distmatrix,data,targets = args
-        (f,logq,a) = self.net_NRiteration(Graph, distmatrix, data,targets,theta)
+        (f,logq,a) = self.NRiteration(Graph, distmatrix, data,targets,theta)
         return -logq
 
-    def net_NRiteration(self, data,targets,theta, tol=0.1, phif=1e100, scale=1.):
+    def NRiteration(self, data,targets,theta, tol=0.1, phif=1e100, scale=1.):
         #print("iteration")
         #pag 46 RASMUSSEN-WILLIAMS
-        K = self.net_kernel( data, data, theta, wantderiv=False)
-        #K = net_kernel(data,data,theta,wantderiv=False)
+        K = self.kernel( data, data, theta, wantderiv=False)
+        #K = kernel(data,data,theta,wantderiv=False)
         n = np.shape(targets)[0]
         f = np.zeros((n,1))
 #        tol = 0.1
@@ -408,13 +427,13 @@ class GPnetClassifier(GPnet):
         return (f,logq,a)
 
 
-    def net_gradLogPosterior(self, theta,*args):
+    def gradLogPosterior(self, theta,*args):
         data,targets = args
         theta = np.squeeze(theta)
         n = np.shape(targets)[0]
-        K = self.net_kernel(data, data, theta, wantderiv=True)
+        K = self.kernel(data, data, theta, wantderiv=True)
         # K = kernel(data,data,theta,wantderiv=True)
-        (f,logq,a) = self.net_NRiteration(data,targets,theta)
+        (f,logq,a) = self.NRiteration(data,targets,theta)
         s = np.where(f<0,f,0)
         W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
         sqrtW = np.sqrt(W)
@@ -438,18 +457,21 @@ class GPnetClassifier(GPnet):
 
         return -gradZ
 
-    def net_predict(self, xstar,data,targets,theta):
-        K = self.net_kernel(data,data,theta,wantderiv=False)
+    def predict(self, xstar,data,targets,theta):
+        #vedi algoritmo 3.2 Rasmussen
+        
+        K = self.kernel(data,data,theta,wantderiv=False)
         n = np.shape(targets)[0]
-        kstar = self.net_kernel(data,xstar,theta,wantderiv=False,measnoise=0)
-        (f,logq,a) = self.net_NRiteration(data,targets,theta)
+        kstar = self.kernel(data,xstar,theta,wantderiv=False,measnoise=0)
+        (f,logq,a) = self.NRiteration(data,targets,theta)
         targets = targets.values.reshape(n,1)
         s = np.where(f<0,f,0)
+        #step 2
         W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
         sqrtW = np.sqrt(W)
         L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
         p = np.exp(s)/(np.exp(s) + np.exp(s-f))
         fstar = np.dot(kstar.transpose(), (targets+1)*0.5 - p)
         v = np.linalg.solve(L,np.dot(sqrtW,kstar))	
-        V = self.net_kernel(xstar,xstar,theta,wantderiv=False,measnoise=0)-np.dot(v.transpose(),v) 
+        V = self.kernel(xstar,xstar,theta,wantderiv=False,measnoise=0)-np.dot(v.transpose(),v) 
         return (fstar,V)
