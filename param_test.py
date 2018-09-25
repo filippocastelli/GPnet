@@ -5,9 +5,9 @@ import pandas as pd
 from GPnet import GPnetRegressor
 #%%
 #randomregular
-a = GPnetRegressor(totnodes = 100, ntrain=50, ntest=30, deg=3, theta=[1,1,1])
+a = GPnetRegressor(totnodes = 100, ntrain=50, ntest=30, deg=3, theta=[0.1, 0.1, 0.1])
 a.plot_graph()
-a.train_model()
+a.predict()
 a.plot_graph_with_values()
 a.plot_result()
 a.plot_prior()
@@ -32,7 +32,7 @@ for l_scale in lengthscales:
             
 G = nx.barabasi_albert_graph(100, 3)
 b = GPnetRegressor(G, ntrain=50, ntest=30, theta=[1,1,2])
-b.train_model()
+b.predict()
 #%%
 dataframe = pd.DataFrame(columns = ["LengthScale", "ConstantScale", "Noise_Scale", "K_posdef","LogP"])
 
