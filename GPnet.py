@@ -126,7 +126,7 @@ class GPnet:
         
 
     def logp(self):
-        return self.net_logPosterior(self.theta, self.training_nodes, self.t)
+        return -self.net_logPosterior(self.theta, self.training_nodes, self.t)
     
     
     def plot_graph(self, filename=False):
@@ -246,13 +246,15 @@ class GPnetRegressor(GPnet):
         try:
             L = np.linalg.cholesky(k)  # Line 2
         except np.linalg.LinAlgError:
-            return -np.inf
+            return np.inf
            # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
     
         #L = np.linalg.cholesky(k)
         alpha = np.linalg.solve(L, t )
-        
-        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t, alpha)
+        alpha.resize(len(alpha),1)
+        t1 = t.values
+        t1.resize(len(t1),1)
+        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1, alpha)
         log_likelihood_dims -= np.log(np.diag(L)).sum()
         log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
         logp = log_likelihood_dims.sum(-1)  # sum over dimensions
