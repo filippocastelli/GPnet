@@ -6,6 +6,22 @@ import matplotlib.patches as mpatches
 import networkx as nx
 import pandas as pd
 import random
+from scipy.special import erf
+#%%
+
+
+
+# Values required for approximating the logistic sigmoid by
+# error functions. coefs are obtained via:
+# x = np.array([0, 0.6, 2, 3.5, 4.5, np.inf])
+# b = logistic(x)
+# A = (erf(np.dot(x, self.lambdas)) + 1) / 2
+# coefs = lstsq(A, b)[0]
+#LAMBDAS = np.array([0.41, 0.4, 0.37, 0.44, 0.39])[:, np.newaxis]
+LAMBDAS = np.array([0.41, 0.4, 0.37, 0.44, 0.39])
+COEFS = np.array([-1854.8214151, 3516.89893646, 221.29346712,
+128.12323805, -2010.49422654])[:, np.newaxis]
+
 
 #%%
 class GPnet:
@@ -140,8 +156,8 @@ class GPnet:
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, 
                                          font_color='k')
         red_patch = mpatches.Patch(color='red', label='training nodes')
-        blue_patch = mpatches.Patch(color='blue', label='test nodes')
-        green_patch = mpatches.Patch(color='green', label='other nodes')
+        blue_patch = mpatches.Patch(color='blue', label='other_nodes')
+        green_patch = mpatches.Patch(color='green', label='test_nodes')
         pl.legend(handles=[red_patch, blue_patch, green_patch])
         if type(filename) is str:
             pl.savefig(filename, bbox_inches='tight')
@@ -188,17 +204,17 @@ class GPnet:
 
 class GPnetRegressor(GPnet):
     def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90,
-                     deg=4, seed=0, training_nodes=False, train_values=False, training_values=False,
+                     deg=4, seed=0, training_nodes=False, training_values=False,
                      test_nodes=False, theta = [0.1, 0.1, 0.1],
                      optimize=False):
-        super(GPnetRegressor, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,train_values, test_nodes, theta, optimize)
+        super(GPnetRegressor, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,training_values, test_nodes, theta, optimize)
         self.pivot_flag = False
-        if train_values == False:
+        if training_values == False:
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
             self.t = self.pvtdist[self.training_nodes]
         else:
-            self.t = train_values
+            self.t = training_values
        
     def predict(self):
         self.optimize_params()
@@ -233,6 +249,9 @@ class GPnetRegressor(GPnet):
         
         print("succesfully trained model")
     
+        return (self.mean, self.s)
+    
+
     def oldlogPosterior(self, theta,*args):
         data,t = args
         k = self.kernel(data,data,theta,wantderiv=False)
@@ -331,7 +350,7 @@ class GPnetRegressor(GPnet):
         pl.plot(self.test_nodes, self.mean, 'ro', ms=4)
         pl.plot(self.test_nodes, self.mean, 'r--', lw=2)
         pl.title('Valore medio e margini di confidenza')
-        loglikelihood = self.logPosterior(self.theta,self.training_nodes,self.t)
+        loglikelihood = -self.logPosterior(self.theta,self.training_nodes,self.t)
         pl.title('Valore medio e margini a posteriori, (length scale: %.3f , constant scale: %.3f ,\
                                                         #noise variance: %.3f )\n Log-Likelihood: %.3f'
                                                         % (self.theta[1], self.theta[0], self.theta[2], loglikelihood))
@@ -367,19 +386,19 @@ class GPnetClassifier(GPnet):
     
     
     def __init__(self, Graph=False, totnodes=False, ntrain=100, ntest=90,
-                 deg=4, seed=0, training_nodes=False, train_values=False, training_values=False,
+                 deg=4, seed=0, training_nodes=False, training_values=False,
                  test_nodes=False, theta = [0.1, 0.1, 0.1],
                  optimize=False):
-        super(GPnetClassifier, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,train_values, test_nodes, theta, optimize)
+        super(GPnetClassifier, self).__init__(Graph, totnodes, ntrain, ntest, deg, seed, training_nodes,training_values, test_nodes, theta, optimize)
         self.pivot_flag = False
-        if train_values == False:
+        if training_values == False:
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
             self.t = self.pvtdist[self.training_nodes]
             self.binary_labels = (np.sin(0.5*self.pvtdist)>0).replace({True: 1, False: -1})
             self.training_labels = self.binary_labels[self.training_nodes]
         else:
-                self.training_labels = train_values
+                self.training_labels = training_values
                 
     def logPosterior(self,theta,*args):
         Graph, distmatrix,data,targets = args
@@ -457,21 +476,66 @@ class GPnetClassifier(GPnet):
 
         return -gradZ
 
-    def predict(self, xstar,data,targets,theta):
+
+
+#    def net_predict(self):
+##        K = self.kernel(self.training_nodes,self.training_nodes,self.theta,wantderiv=False)
+##        n = np.shape(self.training_labels)[0]
+##        kstar = self.kernel(self.training_nodes,self.test_nodes,self.theta,wantderiv=False,measnoise=0)
+##        (f,logq,a) = self.NRiteration(self.training_nodes,self.training_labels,self.theta)
+##        targets = self.training_labels.values.reshape(n,1)
+##        s = np.where(f<0,f,0)
+##        W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
+##        sqrtW = np.sqrt(W)
+##        L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
+##        p = np.exp(s)/(np.exp(s) + np.exp(s-f))
+##        fstar = np.dot(kstar.transpose(), (targets+1)*0.5 - p)
+##        v = np.linalg.solve(L,np.dot(sqrtW,kstar))	
+##        V = self.kernel(self.test_nodes, self.test_nodes,self.theta,
+##                        wantderiv=False,measnoise=0)-np.dot(v.transpose(),v) 
+##        return (fstar,V)
+
+
+
+    def predict(self):
         #vedi algoritmo 3.2 Rasmussen
         
-        K = self.kernel(data,data,theta,wantderiv=False)
-        n = np.shape(targets)[0]
-        kstar = self.kernel(data,xstar,theta,wantderiv=False,measnoise=0)
-        (f,logq,a) = self.NRiteration(data,targets,theta)
-        targets = targets.values.reshape(n,1)
+        K = self.kernel(self.training_nodes,self.training_nodes,
+                        self.theta,wantderiv=False)
+        n = np.shape(self.training_labels)[0]
+        kstar = self.kernel(self.training_nodes,self.test_nodes,self.theta,
+                            wantderiv=False,measnoise=0)
+        (f,logq,a) = self.NRiteration(self.training_nodes,\
+                                      self.training_labels,self.theta)
+        targets = self.training_labels.values.reshape(n,1)
         s = np.where(f<0,f,0)
         #step 2
-        W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
+        W = np.diag(np.squeeze(np.exp(2*s - f) /
+                               ((np.exp(s) + np.exp(s-f))**2)))
         sqrtW = np.sqrt(W)
         L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
         p = np.exp(s)/(np.exp(s) + np.exp(s-f))
         fstar = np.dot(kstar.transpose(), (targets+1)*0.5 - p)
         v = np.linalg.solve(L,np.dot(sqrtW,kstar))	
-        V = self.kernel(xstar,xstar,theta,wantderiv=False,measnoise=0)-np.dot(v.transpose(),v) 
-        return (fstar,V)
+        kstarstar = self.kernel(self.test_nodes,self.test_nodes,self.theta,
+                                    wantderiv=False,measnoise=0).diagonal()
+        module_v = np.dot(v.transpose(),v)
+        
+        V = (kstarstar - module_v).diagonal()
+        
+        #V = self.kernel(self.test_nodes,self.test_nodes,self.theta,wantderiv=False,measnoise=0).diagonal()-np.dot(v.transpose(),v) 
+        
+        
+        
+        alpha = np.tile((1 / (2 * V)), (5,1))
+        #gamma = LAMBDAS * fstar
+        gamma = np.einsum("i,k->ik", LAMBDAS, fstar.T.squeeze())
+        lambdas_mat = np.tile(LAMBDAS,(len(self.test_nodes),1)).T
+        Vmat = np.tile(V, (5,1))
+        integrals = np.sqrt(np.pi / alpha) \
+        * erf(gamma * np.sqrt(alpha / (alpha + lambdas_mat**2))) \
+                            / (2 * np.sqrt(Vmat * 2 * np.pi))
+        pi_star = (COEFS * integrals).sum(axis=0) + .5 * COEFS.sum()
+
+        return (fstar, V, np.vstack((1 - pi_star, pi_star)).T)
+        #return (fstar,V)
