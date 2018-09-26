@@ -3,12 +3,38 @@ import numpy as np
 import matplotlib.pyplot as pl
 import scipy.optimize as so
 import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 import networkx as nx
 import pandas as pd
 import random
 from scipy.special import erf
 
 # %%
+
+#circles
+blue_circle = mlines.Line2D([], [], color='blue', marker='o', linestyle='None',
+                          markersize=10)
+red_circle = mlines.Line2D([], [], color='red', marker='o', linestyle='None',
+                          markersize=10)
+green_circle = mlines.Line2D([], [], color='green', marker='o', linestyle='None',
+                          markersize=10)
+gray_circle = mlines.Line2D([], [], color='gray', marker='o', linestyle='None',
+                          markersize=10)
+#triangles
+blue_triangle = mlines.Line2D([], [], color='blue', marker='v', linestyle='None',
+                          markersize=10)
+red_triangle = mlines.Line2D([], [], color='red', marker='v', linestyle='None',
+                          markersize=10)
+green_triangle = mlines.Line2D([], [], color='green', marker='v', linestyle='None',
+                          markersize=10)
+#squares
+blue_square = mlines.Line2D([], [], color='blue', marker='s', linestyle='None',
+                          markersize=10)
+red_square = mlines.Line2D([], [], color='red', marker='s', linestyle='None',
+                          markersize=10)
+green_square = mlines.Line2D([], [], color='green', marker='s', linestyle='None',
+                          markersize=10)
+
 
 
 # Values required for approximating the logistic sigmoid by
@@ -189,10 +215,18 @@ class GPnet:
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
         # legend
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
-        red_patch = mpatches.Patch(color="red", label="training nodes")
-        blue_patch = mpatches.Patch(color="blue", label="other_nodes")
-        green_patch = mpatches.Patch(color="green", label="test_nodes")
-        pl.legend(handles=[red_patch, blue_patch, green_patch])
+        
+        #legend
+        training_patch = red_circle
+        training_patch._label = "training nodes"
+        test_patch = green_circle
+        test_patch._label = "test nodes"
+        other_patch = blue_circle
+        other_patch._label = "other nodes"
+        
+        pl.legend(handles=[training_patch, test_patch, other_patch])
+        
+        
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         return self
@@ -281,6 +315,64 @@ class GPnetRegressor(GPnet):
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
         # self.mean_t = np.mean(self.t)
+        self.k = self.kernel(
+            nodes_a=self.training_nodes,
+            nodes_b=self.training_nodes,
+            theta=self.theta,
+            wantderiv=False,
+        )
+
+        self.kstar = self.kernel(
+            nodes_a=self.test_nodes,
+            nodes_b=self.training_nodes,
+            theta=self.theta,
+            wantderiv=False,
+            measnoise=False,
+        )
+        self.kstarstar = self.kernel(
+            nodes_a=self.test_nodes,
+            nodes_b=self.test_nodes,
+            theta=self.theta,
+            wantderiv=False,
+        )
+
+        self.kstarstar_diag = np.diag(self.kstarstar)
+
+        if not self.is_pos_def(self.k):
+            self.k_not_posdef_flag = True
+            # raise ValueError("K is not positive definite")
+            print("K not positive definite, aborting...")
+            return self
+        if not self.is_pos_def(self.kstarstar):
+            self.kstar_not_posdef_flag = True
+            # raise ValueError("K** is not positive definite")
+            print("K** not positive definite, aborting...")
+            return self
+
+        self.L = np.linalg.cholesky(self.k)
+        invk = np.linalg.solve(
+            self.L.transpose(),
+            np.linalg.solve(self.L, np.eye(len(self.training_nodes))),
+        )
+        self.mean = np.squeeze(np.dot(self.kstar, np.dot(invk, self.t)))
+        self.var = self.kstarstar_diag - np.diag(
+            np.dot(self.kstar, np.dot(invk, self.kstar.T))
+        )
+        self.var = np.squeeze(np.reshape(self.var, (self.n, 1)))
+        self.s = np.sqrt(self.var)
+
+        print("succesfully trained model")
+        self.is_trained = True
+
+        return (self.mean, self.s)
+    
+    def predict2(self):
+        self.optimize_params()
+
+        self.k_not_posdef_flag = False
+        self.kstar_not_posdef_flag = False
+        # self.mean_t = np.mean(self.t)
+        
         self.k = self.kernel(
             nodes_a=self.training_nodes,
             nodes_b=self.training_nodes,
@@ -429,7 +521,7 @@ class GPnetRegressor(GPnet):
         self.vmax = max(self.t.max(), self.mean.max())
         self.cmap = pl.cm.inferno_r
 
-    def plot_result(self, filename=False):
+    def plot_predict_2d(self, filename=False):
         pl.figure()
         pl.clf()
         pl.plot(self.training_nodes, self.t, "r+", ms=20)
@@ -441,11 +533,10 @@ class GPnetRegressor(GPnet):
         )
         pl.plot(self.test_nodes, self.mean, "ro", ms=4)
         pl.plot(self.test_nodes, self.mean, "r--", lw=2)
-        pl.title("Valore medio e margini di confidenza")
+        pl.title("Gaussian Process Mean and Variance")
         loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
         pl.title(
-            "Valore medio e margini a posteriori, (length scale: %.3f , constant scale: %.3f ,\
-                                                        #noise variance: %.3f )\n Log-Likelihood: %.3f"
+            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
             % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
         )
         pl.xlabel("nodes")
@@ -455,16 +546,15 @@ class GPnetRegressor(GPnet):
         # pl.axis([-5, 5, -3, 3])
         return self
 
-    def plot_predict(self, filename=False):
+    def plot_predict_graph(self, filename=False):
 
         if self.is_trained == False:
             print("need to train a model first, use GPnetRegressor.predict()")
             return
 
         pl.figure(figsize=[10, 9])
-        # pl.figure(2,dpi=200, figsize=[12,7])
+        pl.title("Prediction plot")
 
-        training_nodes_colors = [self.t[node] for node in self.training_nodes]
         self.gen_cmap()
         nx.draw_networkx_nodes(
             self.Graph,
@@ -472,8 +562,9 @@ class GPnetRegressor(GPnet):
             nodelist=self.training_nodes,
             node_color=self.t[(self.training_nodes)],
             with_labels=True,
-            node_size=50,
+            node_size=200,
             cmap=self.cmap,
+            node_shape="v"
         )
 
         nx.draw_networkx_nodes(
@@ -494,6 +585,7 @@ class GPnetRegressor(GPnet):
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
+            node_shape="s"
         )
 
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
@@ -505,6 +597,19 @@ class GPnetRegressor(GPnet):
         cbar = pl.colorbar(sm)
 
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
+        
+        
+        #legend
+        training_patch = red_triangle
+        training_patch._label = "training nodes"
+        test_patch = green_square
+        test_patch._label = "test nodes"
+        other_patch = gray_circle
+        other_patch._label = "other nodes"
+        
+        pl.legend(handles=[training_patch, test_patch, other_patch])
+        
+        
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         return self
@@ -654,22 +759,6 @@ class GPnetClassifier(GPnet):
 
         return -gradZ
 
-    #    def net_predict(self):
-    ##        K = self.kernel(self.training_nodes,self.training_nodes,self.theta,wantderiv=False)
-    ##        n = np.shape(self.training_labels)[0]
-    ##        kstar = self.kernel(self.training_nodes,self.test_nodes,self.theta,wantderiv=False,measnoise=0)
-    ##        (f,logq,a) = self.NRiteration(self.training_nodes,self.training_labels,self.theta)
-    ##        targets = self.training_labels.values.reshape(n,1)
-    ##        s = np.where(f<0,f,0)
-    ##        W = np.diag(np.squeeze(np.exp(2*s - f) / ((np.exp(s) + np.exp(s-f))**2)))
-    ##        sqrtW = np.sqrt(W)
-    ##        L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW,np.dot(K,sqrtW)))
-    ##        p = np.exp(s)/(np.exp(s) + np.exp(s-f))
-    ##        fstar = np.dot(kstar.transpose(), (targets+1)*0.5 - p)
-    ##        v = np.linalg.solve(L,np.dot(sqrtW,kstar))
-    ##        V = self.kernel(self.test_nodes, self.test_nodes,self.theta,
-    ##                        wantderiv=False,measnoise=0)-np.dot(v.transpose(),v)
-    ##        return (fstar,V)
 
     def predict(self):
         # vedi algoritmo 3.2 Rasmussen
