@@ -5,7 +5,8 @@ import pandas as pd
 from GPnet import GPnetRegressor
 #%%
 #randomregular
-a = GPnetRegressor(totnodes = 100, ntrain=50, ntest=30, deg=3, theta=[0.1, 0.1, 0.1])
+a = GPnetRegressor(totnodes = 400, ntrain=50, ntest=30, deg=3, theta=[0.1, 0.1, 0.1])
+#%%
 a.plot_graph()
 a.predict()
 a.plot_graph_with_values()
@@ -25,7 +26,7 @@ for l_scale in lengthscales:
         for n_scale in noisescales:
             theta = np.array([c_scale, l_scale, n_scale])
             a.theta = theta
-            a.train_model()
+            a.predict()
             dataframe.loc[len(dataframe)] = [l_scale, c_scale, n_scale, a.is_pos_def(a.k), a.logp()]
             
 #%% BARABASI-ALBERT
@@ -41,7 +42,7 @@ for l_scale in lengthscales:
         for n_scale in noisescales:
             theta = np.array([c_scale, l_scale, n_scale])
             b.theta = theta
-            b.train_model()
+            b.predict()
             dataframe.loc[len(dataframe)] = [l_scale, c_scale, n_scale, b.is_pos_def(b.k), b.logp()]
             
             
