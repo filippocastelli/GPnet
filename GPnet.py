@@ -10,7 +10,7 @@ import random
 from scipy.special import erf
 
 # %%
-
+    
 #circles
 blue_circle = mlines.Line2D([], [], color='blue', marker='o', linestyle='None',
                           markersize=10)
@@ -185,6 +185,7 @@ class GPnet:
 
     def plot_graph(self, filename=False):
         pl.figure(figsize=[10, 9])
+        pl.title("Graph")
         # node positions
         # draw nodes
         nx.draw_networkx_nodes(
@@ -366,7 +367,8 @@ class GPnetRegressor(GPnet):
 
         return (self.mean, self.s)
     
-    def predict2(self):
+    def predict_RW(self):
+        #predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
 
         self.k_not_posdef_flag = False
@@ -408,21 +410,15 @@ class GPnetRegressor(GPnet):
             return self
 
         self.L = np.linalg.cholesky(self.k)
-        invk = np.linalg.solve(
-            self.L.transpose(),
-            np.linalg.solve(self.L, np.eye(len(self.training_nodes))),
-        )
-        self.mean = np.squeeze(np.dot(self.kstar, np.dot(invk, self.t)))
-        self.var = self.kstarstar_diag - np.diag(
-            np.dot(self.kstar, np.dot(invk, self.kstar.T))
-        )
-        self.var = np.squeeze(np.reshape(self.var, (self.n, 1)))
-        self.s = np.sqrt(self.var)
+        self.alpha = np.linalg.solve(self.L.T, np.linalg.solve(self.L, self.t))
+        self.fstar = np.dot(self.kstar, self.alpha)
+        self.v = np.linalg.solve(self.L, self.kstar.T)
+        self.V = self.kstarstar_diag - np.dot(self.v.T, self.v)
 
         print("succesfully trained model")
         self.is_trained = True
 
-        return (self.mean, self.s)
+        return (self.fstar, self.V.diagonal())
 
     def oldlogPosterior(self, theta, *args):
         data, t = args
