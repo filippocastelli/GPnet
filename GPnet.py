@@ -10,31 +10,40 @@ import random
 from scipy.special import erf
 
 # %%
-    
-#circles
-blue_circle = mlines.Line2D([], [], color='blue', marker='o', linestyle='None',
-                          markersize=10)
-red_circle = mlines.Line2D([], [], color='red', marker='o', linestyle='None',
-                          markersize=10)
-green_circle = mlines.Line2D([], [], color='green', marker='o', linestyle='None',
-                          markersize=10)
-gray_circle = mlines.Line2D([], [], color='gray', marker='o', linestyle='None',
-                          markersize=10)
-#triangles
-blue_triangle = mlines.Line2D([], [], color='blue', marker='v', linestyle='None',
-                          markersize=10)
-red_triangle = mlines.Line2D([], [], color='red', marker='v', linestyle='None',
-                          markersize=10)
-green_triangle = mlines.Line2D([], [], color='green', marker='v', linestyle='None',
-                          markersize=10)
-#squares
-blue_square = mlines.Line2D([], [], color='blue', marker='s', linestyle='None',
-                          markersize=10)
-red_square = mlines.Line2D([], [], color='red', marker='s', linestyle='None',
-                          markersize=10)
-green_square = mlines.Line2D([], [], color='green', marker='s', linestyle='None',
-                          markersize=10)
 
+# circles
+blue_circle = mlines.Line2D(
+    [], [], color="blue", marker="o", linestyle="None", markersize=10
+)
+red_circle = mlines.Line2D(
+    [], [], color="red", marker="o", linestyle="None", markersize=10
+)
+green_circle = mlines.Line2D(
+    [], [], color="green", marker="o", linestyle="None", markersize=10
+)
+gray_circle = mlines.Line2D(
+    [], [], color="gray", marker="o", linestyle="None", markersize=10
+)
+# triangles
+blue_triangle = mlines.Line2D(
+    [], [], color="blue", marker="v", linestyle="None", markersize=10
+)
+red_triangle = mlines.Line2D(
+    [], [], color="red", marker="v", linestyle="None", markersize=10
+)
+green_triangle = mlines.Line2D(
+    [], [], color="green", marker="v", linestyle="None", markersize=10
+)
+# squares
+blue_square = mlines.Line2D(
+    [], [], color="blue", marker="s", linestyle="None", markersize=10
+)
+red_square = mlines.Line2D(
+    [], [], color="red", marker="s", linestyle="None", markersize=10
+)
+green_square = mlines.Line2D(
+    [], [], color="green", marker="s", linestyle="None", markersize=10
+)
 
 
 # Values required for approximating the logistic sigmoid by
@@ -216,18 +225,17 @@ class GPnet:
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
         # legend
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
-        
-        #legend
+
+        # legend
         training_patch = red_circle
         training_patch._label = "training nodes"
         test_patch = green_circle
         test_patch._label = "test nodes"
         other_patch = blue_circle
         other_patch._label = "other nodes"
-        
+
         pl.legend(handles=[training_patch, test_patch, other_patch])
-        
-        
+
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         return self
@@ -366,15 +374,15 @@ class GPnetRegressor(GPnet):
         self.is_trained = True
 
         return (self.mean, self.s)
-    
+
     def predict_RW(self):
-        #predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
+        # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
 
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
         # self.mean_t = np.mean(self.t)
-        
+
         self.k = self.kernel(
             nodes_a=self.training_nodes,
             nodes_b=self.training_nodes,
@@ -560,7 +568,7 @@ class GPnetRegressor(GPnet):
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
-            node_shape="v"
+            node_shape="v",
         )
 
         nx.draw_networkx_nodes(
@@ -581,7 +589,7 @@ class GPnetRegressor(GPnet):
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
-            node_shape="s"
+            node_shape="s",
         )
 
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
@@ -593,19 +601,17 @@ class GPnetRegressor(GPnet):
         cbar = pl.colorbar(sm)
 
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
-        
-        
-        #legend
+
+        # legend
         training_patch = red_triangle
         training_patch._label = "training nodes"
         test_patch = green_square
         test_patch._label = "test nodes"
         other_patch = gray_circle
         other_patch._label = "other nodes"
-        
+
         pl.legend(handles=[training_patch, test_patch, other_patch])
-        
-        
+
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         return self
@@ -719,8 +725,7 @@ class GPnetClassifier(GPnet):
             - sum(np.log(L.diagonal()))
         )
         return (f, logq, a)
-    
-    
+
     def NRiteration(self, data, targets, theta, tol=0.1, phif=1e100, scale=1.):
         # print("iteration")
         # pag 46 RASMUSSEN-WILLIAMS
@@ -736,14 +741,13 @@ class GPnetClassifier(GPnet):
         while True:
 
             count += 1
-            #s = np.where(f < 0, f, 0)
-            W = np.diag(
-                np.squeeze(np.exp(-f) / (1 + np.exp(-f)) ** 2))
+            # s = np.where(f < 0, f, 0)
+            W = np.diag(np.squeeze(np.exp(-f) / (1 + np.exp(-f)) ** 2))
 
             sqrtW = np.sqrt(W)
             # L = cholesky(B)
             L = np.linalg.cholesky(np.eye(n) + np.dot(sqrtW, np.dot(K, sqrtW)))
-            p = 1 / (1+ np.exp(- f))
+            p = 1 / (1 + np.exp(-f))
             b = np.dot(W, f) + 0.5 * (targets + 1) - p
             a = scale * (
                 b
@@ -771,14 +775,14 @@ class GPnetClassifier(GPnet):
                 scale = scale / 2.
 
         s = -targets * f
-        #ps = np.where(s > 0, s, 0)
+        # ps = np.where(s > 0, s, 0)
         # logq = -0.5*np.dot(a.transpose(),f) -np.sum(np.log(ps+np.log(np.exp(-ps) + np.exp(s-ps)))) - np.trace(np.log(L))
         logq = (
             -0.5 * np.dot(a.transpose(), f)
             - np.sum(np.log(1 + np.log(1 + np.exp(-s))))
             - sum(np.log(L.diagonal()))
         )
-        
+
         return (f, logq, a)
 
     def gradLogPosterior(self, theta, *args):
@@ -815,7 +819,6 @@ class GPnetClassifier(GPnet):
             gradZ[d - 1] = s1 + np.dot(s2.transpose(), s3)
 
         return -gradZ
-
 
     def predict(self):
         # vedi algoritmo 3.2 Rasmussen
@@ -863,17 +866,16 @@ class GPnetClassifier(GPnet):
             / (2 * np.sqrt(Vmat * 2 * np.pi))
         )
         pi_star = (COEFS * integrals).sum(axis=0) + .5 * COEFS.sum()
-        
+
         self.predicted_probs = np.vstack((1 - pi_star, pi_star)).T
         self.s = np.sqrt(self.V)
-        
+
         print("succesfully trained model")
         self.is_trained = True
-        
+
         return (self.fstar.T, self.V, self.predicted_probs)
         # return (fstar,V)
-        
-        
+
     def plot_latent(self, filename=False):
         pl.figure()
         pl.clf()
@@ -884,7 +886,7 @@ class GPnetClassifier(GPnet):
         )
         pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
         pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
-        
+
         loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
         pl.title(
             "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
@@ -896,8 +898,7 @@ class GPnetClassifier(GPnet):
             pl.savefig(filename, bbox_inches="tight")
         # pl.axis([-5, 5, -3, 3])
         return self
-    
-    
+
     def plot_predict_graph(self, filename=False):
 
         if self.is_trained == False:
@@ -912,11 +913,15 @@ class GPnetClassifier(GPnet):
             self.Graph,
             self.plot_pos,
             nodelist=self.training_nodes,
-            node_color=np.where(self.training_labels[(self.training_nodes)] >0, self.training_labels[(self.training_nodes)] ,0),
+            node_color=np.where(
+                self.training_labels[(self.training_nodes)] > 0,
+                self.training_labels[(self.training_nodes)],
+                0,
+            ),
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
-            node_shape="v"
+            node_shape="v",
         )
 
         nx.draw_networkx_nodes(
@@ -937,31 +942,27 @@ class GPnetClassifier(GPnet):
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
-            node_shape="s"
+            node_shape="s",
         )
 
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
 
-        sm = pl.cm.ScalarMappable(
-            cmap=self.cmap, norm=pl.Normalize(vmin=0, vmax=1)
-        )
+        sm = pl.cm.ScalarMappable(cmap=self.cmap, norm=pl.Normalize(vmin=0, vmax=1))
         sm.set_array([])
         cbar = pl.colorbar(sm)
 
         labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
-        
-        
-        #legend
+
+        # legend
         training_patch = red_triangle
         training_patch._label = "training nodes"
         test_patch = green_square
         test_patch._label = "test nodes"
         other_patch = gray_circle
         other_patch._label = "other nodes"
-        
+
         pl.legend(handles=[training_patch, test_patch, other_patch])
-        
-        
+
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         return self
