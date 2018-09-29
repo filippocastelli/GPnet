@@ -867,6 +867,9 @@ class GPnetClassifier(GPnet):
         self.predicted_probs = np.vstack((1 - pi_star, pi_star)).T
         self.s = np.sqrt(self.V)
         
+        print("succesfully trained model")
+        self.is_trained = True
+        
         return (self.fstar.T, self.V, self.predicted_probs)
         # return (fstar,V)
         
@@ -909,7 +912,7 @@ class GPnetClassifier(GPnet):
             self.Graph,
             self.plot_pos,
             nodelist=self.training_nodes,
-            node_color=self.t[(self.training_nodes)],
+            node_color=np.where(self.training_labels[(self.training_nodes)] >0, self.training_labels[(self.training_nodes)] ,0),
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
@@ -930,7 +933,7 @@ class GPnetClassifier(GPnet):
             self.Graph,
             self.plot_pos,
             nodelist=self.test_nodes,
-            node_color=self.mean,
+            node_color=self.predicted_probs.T[0],
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
@@ -966,4 +969,4 @@ class GPnetClassifier(GPnet):
     def gen_cmap(self):
         self.vmin = 0
         self.vmax = 1
-        self.cmap = pl.cm.inferno_r
+        self.cmap = pl.cm.seismic
