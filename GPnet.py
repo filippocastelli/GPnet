@@ -189,6 +189,40 @@ class GPnet:
         else:
             return k + measnoise * theta[2] * np.eye(d1, d2)
 
+
+    def kernel2(
+        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
+    ):
+        theta = np.squeeze(theta)
+        theta = np.exp(theta)
+        # graph_distance_matrix = shortest_path_graph_distances(Graph)
+        nodelist = list(self.Graph.nodes)
+        nodeset = set(nodes_a).union(set(nodes_b))
+        nodes_to_drop = [x for x in nodelist if x not in nodeset]
+        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
+        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
+        distances = (p.values / theta[1]) ** 2
+
+        d1 = len(nodes_a)
+        d2 = len(nodes_b)
+
+        # k = 2 +theta[0] * np.exp(-0.5*distances)
+        k =theta[3]**2 + (theta[0] ** 2) * np.exp(-0.5 * distances)
+
+        if wantderiv:
+            K = np.zeros((d1, d2, len(theta) + 1))
+            # K[:,:,0] is the original covariance matrix
+            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
+            K[:, :, 1] = 2 * k
+            K[:, :, 2] = (k * distances) / theta[1]
+            K[:, :, 3] = theta[2] * np.eye(d1, d2)
+            K[:, :, 3] = 2*theta[3]
+            return K
+        else:
+            return k + measnoise * theta[2] * np.eye(d1, d2)
+        
+        
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
 
@@ -564,7 +598,7 @@ class GPnetRegressor(GPnet):
             self.Graph,
             self.plot_pos,
             nodelist=self.training_nodes,
-            node_color=self.t[(self.training_nodes)],
+            node_color=np.squeeze(self.t[(self.training_nodes)]),
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
@@ -650,11 +684,12 @@ class GPnetClassifier(GPnet):
         self.pivot_flag = False
 
         if training_values == False:
-
+            print("no training labels where specified")
+            print("> Setting labels to (np.sin(0.6 * self.pvtdist) > 0).replace({True: 1, False: -1})")
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
             self.t = self.pvtdist[self.training_nodes]
-            self.binary_labels = (np.sin(0.8 * self.pvtdist) > 0).replace(
+            self.binary_labels = (np.sin(0.6* self.pvtdist) > 0).replace(
                 {True: 1, False: -1}
             )
             self.training_labels = self.binary_labels[self.training_nodes]
@@ -956,7 +991,7 @@ class GPnetClassifier(GPnet):
         # legend
         training_patch = red_triangle
         training_patch._label = "training nodes"
-        test_patch = green_square
+        test_patch = blue_square
         test_patch._label = "test nodes"
         other_patch = gray_circle
         other_patch._label = "other nodes"
