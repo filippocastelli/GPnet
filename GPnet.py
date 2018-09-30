@@ -61,6 +61,68 @@ COEFS = np.array(
 
 # %%
 class GPnet:
+    """ GPnet class cointains common attributes and methods for GPnetClassifier 
+    and GPnetRegressor
+    
+    
+    Attributes
+    ----------
+    
+    Graph : network Graph
+        NetworkX Graph on which regression/classification is made, if no graph
+        is provided random regular graph is generated
+    totnodes : int
+        total number of nodes (for random graph generation)
+    ntrain : int
+        number of training nodes
+    ntest : int
+        number of test nodes
+    deg : int
+        connectivity degree (for random graph generation)
+    seed : int
+        seed for random number generation
+    training_nodes: list
+        list of nodes that are used for training
+    test_nodes: list
+        list of test nodes
+    training_values: pandas Series (will be changed in future)
+        training labels
+    theta: list
+        list of kernel parameters [a, b, c, d]
+        a : constant term
+        b : constant scale
+        c : length scale
+        d : noise term
+        notice that kernel parameters are exponentiated, take np.log(theta) in
+        advance
+    optimize: bool
+        if True activates the kernel parameter optimizer
+        
+    Methods
+    ----------
+    calc_shortest_paths():
+        calculates the shortest path matrix using Dijkstra's algorithm
+    pivot_distance(pivot=0)
+        returns pivot distance list respect to pivot
+    random_assign_nodes():
+        assigns nodes to training and test randomly, uses GPnet.seed
+    kernel(nodes_a, nodes_b, theta, measnoise=1.0, wantderiv=True)
+        calculates covariance matrix between nodes_a and nodes_b with
+        theta parameters
+    is_pos_def(test_mat):
+        returns True if test_mat is positive definite
+    logp()
+        returns LogMarginalLikelihood
+    plot_graph(filename=False):
+        plots Graph with training/test/other labels
+        if filename is defined saves plot as filename.png
+    plot_prior():
+        plots 5 extractions from prior process distribution
+        if filename is defined saves plot as filename.png
+    plot_post():
+        plots 5 extractions from posterior process distribution
+        if filename is defined saves plot as filename.png
+    """
     def __init__(
         self,
         Graph,
@@ -190,9 +252,30 @@ class GPnet:
 #            return k + measnoise * theta[2] * np.eye(d1, d2)
 
 
-    def kernel(
-        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
-    ):
+    def kernel(self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True):
+        """
+        Kernel Function
+        ---------------
+        
+        k(nodes_a, nodes_b) = exp(a) + exp(b) * exp(-1/2 * (dist/exp(c))^2) + I*d
+        
+        with theta=[a,b,c,d]
+        
+        
+        Parameters
+        ----------
+        
+        nodes_a, nodes_b : list
+            list of nodes between which the correlation matrix is calculated
+        theta: 
+            parameters, described aboce
+        measnoise: 
+            scale for measured noise ( just testing purposes )
+        wantderiv:
+            if True returns a k[len(nodes_a), len(nodes_b), len(theta) +1] ndarray
+            k[:,:,0] is the covariance matrix
+            K[:,:,j] are the the j-th partial derivatives respect to parameters
+        """
         theta = np.squeeze(theta)
         theta = np.exp(theta)
         # graph_distance_matrix = shortest_path_graph_distances(Graph)
@@ -318,6 +401,31 @@ class GPnet:
 
 
 class GPnetRegressor(GPnet):
+    """
+    Class for Regressors
+    
+    
+    Methods
+    ---------
+    
+    predict():
+        calculates predictions using training labels
+    predict_RW():
+        same thing, just implemented differently (to be removed)
+    logPosterior(theta, data, labels):
+        returns -log marginal likelihood
+    gradlogposterior(theta, data, labels):
+        returns - gradient(logposterior)
+    optimize_params():
+        optimizer
+    plot_predict_2d(filename=False):
+        plots post Gaussian Process in 2d fashion, with node number on x
+        if filename is specified saves plot to 'filename.png'
+    plot_predict_graph(filename=False):
+        plots graph, node's color is proportional to process prediction
+        if filename is specified saves plot to 'filename.png'
+        
+    """
     def __init__(
         self,
         Graph=False,
@@ -499,7 +607,7 @@ class GPnetRegressor(GPnet):
         logp = log_likelihood_dims.sum(-1)  # sum over dimensions
         # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
         # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
-        print("logp is ",-logp)
+        #print("logp is ",-logp)
         return -logp
 
     def oldgradLogPosterior(self, theta, *args):
@@ -665,6 +773,27 @@ class GPnetRegressor(GPnet):
 
 
 class GPnetClassifier(GPnet):
+        """
+    Class for Classifiers
+    
+    
+    Methods
+    ---------
+    predict():
+        calculates predictions using training labels
+    NRiteration(data, targets, theta, tol=0.1, phif=1e100, scale=1.):
+        finds maximum f_star mode for Laplace Approximation
+    logPosterior(theta, data, labels):
+        returns -log marginal likelihood
+    gradlogposterior(theta, data, labels):
+        returns - gradient(logposterior)
+    plot_latent(filename=False):
+        plots latent Gaussian Process in 2d fashion, with node number on x
+        if filename is specified saves plot to 'filename.png'
+    plot_predict_graph(filename=False):
+        plots graph, node's color is proportional to process prediction
+        if filename is specified saves plot to 'filename.png'
+    """
     def __init__(
         self,
         Graph=False,
