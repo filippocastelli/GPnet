@@ -158,6 +158,38 @@ class GPnet:
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
 
+#    def kernel2(
+#        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
+#    ):
+#        theta = np.squeeze(theta)
+#        theta = np.exp(theta)
+#        # graph_distance_matrix = shortest_path_graph_distances(Graph)
+#        nodelist = list(self.Graph.nodes)
+#        nodeset = set(nodes_a).union(set(nodes_b))
+#        nodes_to_drop = [x for x in nodelist if x not in nodeset]
+#        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
+#        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+#        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
+#        distances = (p.values / theta[1]) ** 2
+#
+#        d1 = len(nodes_a)
+#        d2 = len(nodes_b)
+#
+#        # k = 2 +theta[0] * np.exp(-0.5*distances)
+#        k = (theta[0] ** 2) * np.exp(-0.5 * distances)
+#
+#        if wantderiv:
+#            K = np.zeros((d1, d2, len(theta) + 1))
+#            # K[:,:,0] is the original covariance matrix
+#            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
+#            K[:, :, 1] = 2 * k
+#            K[:, :, 2] = (k * distances) / theta[1]
+#            K[:, :, 3] = theta[2] * np.eye(d1, d2)
+#            return K
+#        else:
+#            return k + measnoise * theta[2] * np.eye(d1, d2)
+
+
     def kernel(
         self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
     ):
@@ -169,55 +201,25 @@ class GPnet:
         nodes_to_drop = [x for x in nodelist if x not in nodeset]
         cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+        
         p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        distances = (p.values / theta[1]) ** 2
+        d_squared = (p.values/theta[2]) ** 2
 
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-
-        # k = 2 +theta[0] * np.exp(-0.5*distances)
-        k = (theta[0] ** 2) * np.exp(-0.5 * distances)
+        
+        exp1 =  np.exp(-0.5 * d_squared)
+        
+        k = theta[0] + theta[1]*exp1
 
         if wantderiv:
             K = np.zeros((d1, d2, len(theta) + 1))
             # K[:,:,0] is the original covariance matrix
             K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-            K[:, :, 1] = 2 * k
-            K[:, :, 2] = (k * distances) / theta[1]
-            K[:, :, 3] = theta[2] * np.eye(d1, d2)
-            return K
-        else:
-            return k + measnoise * theta[2] * np.eye(d1, d2)
-
-
-    def kernel2(
-        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
-    ):
-        theta = np.squeeze(theta)
-        theta = np.exp(theta)
-        # graph_distance_matrix = shortest_path_graph_distances(Graph)
-        nodelist = list(self.Graph.nodes)
-        nodeset = set(nodes_a).union(set(nodes_b))
-        nodes_to_drop = [x for x in nodelist if x not in nodeset]
-        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
-        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        distances = (p.values / theta[1]) ** 2
-
-        d1 = len(nodes_a)
-        d2 = len(nodes_b)
-
-        # k = 2 +theta[0] * np.exp(-0.5*distances)
-        k =theta[3]**2 + (theta[0] ** 2) * np.exp(-0.5 * distances)
-
-        if wantderiv:
-            K = np.zeros((d1, d2, len(theta) + 1))
-            # K[:,:,0] is the original covariance matrix
-            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-            K[:, :, 1] = 2 * k
-            K[:, :, 2] = (k * distances) / theta[1]
-            K[:, :, 3] = theta[2] * np.eye(d1, d2)
-            K[:, :, 3] = 2*theta[3]
+            K[:, :, 1] = theta[0]
+            K[:, :, 2] = theta[1]*exp1
+            K[:, :, 3] = theta[1]*exp1*d_squared
+            K[:, :, 4] = theta[3]*np.eye(d1,d2)
             return K
         else:
             return k + measnoise * theta[2] * np.eye(d1, d2)
@@ -488,14 +490,16 @@ class GPnetRegressor(GPnet):
         # L = np.linalg.cholesky(k)
         alpha = np.linalg.solve(L, t)
         alpha.resize(len(alpha), 1)
-        t1 = t.values
-        t1.resize(len(t1), 1)
-        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1, alpha)
+        t1 = t.copy()
+        t1v = t1.values
+        t1v.resize(len(t1), 1)
+        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
         log_likelihood_dims -= np.log(np.diag(L)).sum()
         log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
         logp = log_likelihood_dims.sum(-1)  # sum over dimensions
         # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
         # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
+        print("logp is ",-logp)
         return -logp
 
     def oldgradLogPosterior(self, theta, *args):
@@ -525,20 +529,29 @@ class GPnetRegressor(GPnet):
         k = self.kernel(data, data, theta, wantderiv=True)
         try:
             L = np.linalg.cholesky(k[:, :, 0])  # Line 2
+            K_inv = np.dot(np.linalg.inv(L).T, np.linalg.inv(L))
         except np.linalg.LinAlgError:
             return -np.inf
         # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
 
         # L = np.linalg.cholesky(k)
         alpha = np.linalg.solve(L, t)
-        tmp = np.einsum("ik,jk->ijk", alpha, alpha)  # k: output-dimension
-        tmp -= np.linalg.solve(L, np.eye(k.shape[0]))[:, :, np.newaxis]
+        
+        tmp = np.eye(k.shape[0])*np.dot(alpha, alpha.T)
+        #tmp = np.einsum("ik,jk->ijk", alpha, alpha)  # k: output-dimension
+        #tmp2 = np.linalg.solve(L, np.eye(k.shape[0]))[:, :, np.newaxis]
+        tmp -= K_inv
         # Compute "0.5 * trace(tmp.dot(K_gradient))" without
         # constructing the full matrix tmp.dot(K_gradient) since only
         # its diagonal is required
-        log_likelihood_gradient_dims = 0.5 * np.einsum("ijl,ijk->kl", tmp, k[:, :, 1:])
-        log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
-
+        log_likelihood_gradient_dim = np.zeros([len(data), len(data), len(theta)])
+        for i in range(0, len(theta)):
+            log_likelihood_gradient_dim[:,:,i] = 0.5*np.dot(tmp, k[:,:,i+1])
+            log_likelihood_gradient = np.trace(log_likelihood_gradient_dim[:,:,1])
+            
+        #log_likelihood_gradient_dims = 0.5 * np.einsum("ij,ijk->ijk", tmp, k[:, :, 1:])
+        #log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
+        print(log_likelihood_gradient)
         return -log_likelihood_gradient
 
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):

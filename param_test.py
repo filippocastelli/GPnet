@@ -9,8 +9,6 @@ a = GPnetRegressor(totnodes = 400, ntrain=50, ntest=30, deg=3, theta=[0.1, 0.1, 
 #%%
 a.plot_graph()
 a.predict()
-a.plot_graph_with_values()
-a.plot_result()
 a.plot_prior()
 a.plot_post()
 #%%
