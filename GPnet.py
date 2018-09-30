@@ -123,6 +123,7 @@ class GPnet:
         plots 5 extractions from posterior process distribution
         if filename is defined saves plot as filename.png
     """
+
     def __init__(
         self,
         Graph,
@@ -220,37 +221,36 @@ class GPnet:
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
 
-#    def kernel2(
-#        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
-#    ):
-#        theta = np.squeeze(theta)
-#        theta = np.exp(theta)
-#        # graph_distance_matrix = shortest_path_graph_distances(Graph)
-#        nodelist = list(self.Graph.nodes)
-#        nodeset = set(nodes_a).union(set(nodes_b))
-#        nodes_to_drop = [x for x in nodelist if x not in nodeset]
-#        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
-#        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-#        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-#        distances = (p.values / theta[1]) ** 2
-#
-#        d1 = len(nodes_a)
-#        d2 = len(nodes_b)
-#
-#        # k = 2 +theta[0] * np.exp(-0.5*distances)
-#        k = (theta[0] ** 2) * np.exp(-0.5 * distances)
-#
-#        if wantderiv:
-#            K = np.zeros((d1, d2, len(theta) + 1))
-#            # K[:,:,0] is the original covariance matrix
-#            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-#            K[:, :, 1] = 2 * k
-#            K[:, :, 2] = (k * distances) / theta[1]
-#            K[:, :, 3] = theta[2] * np.eye(d1, d2)
-#            return K
-#        else:
-#            return k + measnoise * theta[2] * np.eye(d1, d2)
-
+    #    def kernel2(
+    #        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
+    #    ):
+    #        theta = np.squeeze(theta)
+    #        theta = np.exp(theta)
+    #        # graph_distance_matrix = shortest_path_graph_distances(Graph)
+    #        nodelist = list(self.Graph.nodes)
+    #        nodeset = set(nodes_a).union(set(nodes_b))
+    #        nodes_to_drop = [x for x in nodelist if x not in nodeset]
+    #        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
+    #        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+    #        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
+    #        distances = (p.values / theta[1]) ** 2
+    #
+    #        d1 = len(nodes_a)
+    #        d2 = len(nodes_b)
+    #
+    #        # k = 2 +theta[0] * np.exp(-0.5*distances)
+    #        k = (theta[0] ** 2) * np.exp(-0.5 * distances)
+    #
+    #        if wantderiv:
+    #            K = np.zeros((d1, d2, len(theta) + 1))
+    #            # K[:,:,0] is the original covariance matrix
+    #            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
+    #            K[:, :, 1] = 2 * k
+    #            K[:, :, 2] = (k * distances) / theta[1]
+    #            K[:, :, 3] = theta[2] * np.eye(d1, d2)
+    #            return K
+    #        else:
+    #            return k + measnoise * theta[2] * np.eye(d1, d2)
 
     def kernel(self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True):
         """
@@ -284,30 +284,29 @@ class GPnet:
         nodes_to_drop = [x for x in nodelist if x not in nodeset]
         cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-        
+
         p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        d_squared = (p.values/theta[2]) ** 2
+        d_squared = (p.values / theta[2]) ** 2
 
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-        
-        exp1 =  np.exp(-0.5 * d_squared)
-        
-        k = theta[0] + theta[1]*exp1
+
+        exp1 = np.exp(-0.5 * d_squared)
+
+        k = theta[0] + theta[1] * exp1
 
         if wantderiv:
             K = np.zeros((d1, d2, len(theta) + 1))
             # K[:,:,0] is the original covariance matrix
             K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
             K[:, :, 1] = theta[0]
-            K[:, :, 2] = theta[1]*exp1
-            K[:, :, 3] = theta[1]*exp1*d_squared
-            K[:, :, 4] = theta[3]*np.eye(d1,d2)
+            K[:, :, 2] = theta[1] * exp1
+            K[:, :, 3] = theta[1] * exp1 * d_squared
+            K[:, :, 4] = theta[3] * np.eye(d1, d2)
             return K
         else:
             return k + measnoise * theta[2] * np.eye(d1, d2)
-        
-        
+
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
 
@@ -426,6 +425,7 @@ class GPnetRegressor(GPnet):
         if filename is specified saves plot to 'filename.png'
         
     """
+
     def __init__(
         self,
         Graph=False,
@@ -607,7 +607,7 @@ class GPnetRegressor(GPnet):
         logp = log_likelihood_dims.sum(-1)  # sum over dimensions
         # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
         # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
-        #print("logp is ",-logp)
+        # print("logp is ",-logp)
         return -logp
 
     def oldgradLogPosterior(self, theta, *args):
@@ -644,21 +644,21 @@ class GPnetRegressor(GPnet):
 
         # L = np.linalg.cholesky(k)
         alpha = np.linalg.solve(L, t)
-        
-        tmp = np.eye(k.shape[0])*np.dot(alpha, alpha.T)
-        #tmp = np.einsum("ik,jk->ijk", alpha, alpha)  # k: output-dimension
-        #tmp2 = np.linalg.solve(L, np.eye(k.shape[0]))[:, :, np.newaxis]
+
+        tmp = np.eye(k.shape[0]) * np.dot(alpha, alpha.T)
+        # tmp = np.einsum("ik,jk->ijk", alpha, alpha)  # k: output-dimension
+        # tmp2 = np.linalg.solve(L, np.eye(k.shape[0]))[:, :, np.newaxis]
         tmp -= K_inv
         # Compute "0.5 * trace(tmp.dot(K_gradient))" without
         # constructing the full matrix tmp.dot(K_gradient) since only
         # its diagonal is required
         log_likelihood_gradient_dim = np.zeros([len(data), len(data), len(theta)])
         for i in range(0, len(theta)):
-            log_likelihood_gradient_dim[:,:,i] = 0.5*np.dot(tmp, k[:,:,i+1])
-            log_likelihood_gradient = np.trace(log_likelihood_gradient_dim[:,:,1])
-            
-        #log_likelihood_gradient_dims = 0.5 * np.einsum("ij,ijk->ijk", tmp, k[:, :, 1:])
-        #log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
+            log_likelihood_gradient_dim[:, :, i] = 0.5 * np.dot(tmp, k[:, :, i + 1])
+            log_likelihood_gradient = np.trace(log_likelihood_gradient_dim[:, :, 1])
+
+        # log_likelihood_gradient_dims = 0.5 * np.einsum("ij,ijk->ijk", tmp, k[:, :, 1:])
+        # log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
         print(log_likelihood_gradient)
         return -log_likelihood_gradient
 
@@ -773,7 +773,7 @@ class GPnetRegressor(GPnet):
 
 
 class GPnetClassifier(GPnet):
-        """
+    """
     Class for Classifiers
     
     
@@ -794,6 +794,7 @@ class GPnetClassifier(GPnet):
         plots graph, node's color is proportional to process prediction
         if filename is specified saves plot to 'filename.png'
     """
+
     def __init__(
         self,
         Graph=False,
@@ -827,11 +828,13 @@ class GPnetClassifier(GPnet):
 
         if training_values == False:
             print("no training labels where specified")
-            print("> Setting labels to (np.sin(0.6 * self.pvtdist) > 0).replace({True: 1, False: -1})")
+            print(
+                "> Setting labels to (np.sin(0.6 * self.pvtdist) > 0).replace({True: 1, False: -1})"
+            )
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
             self.t = self.pvtdist[self.training_nodes]
-            self.binary_labels = (np.sin(0.6* self.pvtdist) > 0).replace(
+            self.binary_labels = (np.sin(0.6 * self.pvtdist) > 0).replace(
                 {True: 1, False: -1}
             )
             self.training_labels = self.binary_labels[self.training_nodes]
