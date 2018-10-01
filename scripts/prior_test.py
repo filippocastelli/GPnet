@@ -83,7 +83,8 @@ LML3 = [[a.logPosterior([p0, Theta2[i,j], p2, Theta3[i,j]], a.training_nodes, a.
 LML3 = -np.array(LML3).T
 #%%
 #l.imshow(LML)
-fig, ax = pl.subplots(2,2)
+fig, ax = pl.subplots(2,2, dpi=150
+                      )
 
 fig.suptitle("LML landscapes")
 cax0 = ax[0,0].pcolor(theta1, theta2, LML0, cmap=cm.viridis)
