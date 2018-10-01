@@ -1,9 +1,4 @@
 from __future__ import division
-
-import sys
-sys.path.append('../')
-
-
 import numpy as np
 import networkx as nx
 from GPnet import GPnetRegressor, GPnetClassifier
@@ -39,13 +34,13 @@ a.plot_predict_2d()
             
 # Plot LML landscape
 theta0 = np.linspace(-10, 10, 100)
-theta1 = np.linspace(-2, 4, 10)
-theta2 = np.linspace(-2, 50, 40)
+theta1 = np.linspace(-4, 4, 10)
+theta2 = np.linspace(-4, 4, 40)
 theta3 = np.linspace(-10, 10, 10)
 theta4 = np.linspace(-10, 10, 10)
 
 Theta1, Theta2 = np.meshgrid(theta1, theta2)
-LML = [[a.logPosterior([1, Theta1[i, j], Theta2[i, j], 0.0001], a.training_nodes, a.t ) for i in range(Theta1.shape[0])] for j in range(Theta2.shape[1])]
+LML = [[a.logPosterior([1, Theta1[i, j], Theta2[i, j], 0.1, 0.1], a.training_nodes, a.t ) for i in range(Theta1.shape[0])] for j in range(Theta2.shape[1])]
 LML = np.array(LML).T
 
 #%%

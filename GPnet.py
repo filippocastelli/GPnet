@@ -423,6 +423,8 @@ class GPnetRegressor(GPnet):
     plot_predict_graph(filename=False):
         plots graph, node's color is proportional to process prediction
         if filename is specified saves plot to 'filename.png'
+    set_training_values(training_values):
+        set training values to training_values
         
     """
 
@@ -462,6 +464,9 @@ class GPnetRegressor(GPnet):
         else:
             self.t = training_values
 
+    def set_training_values(self, training_values):
+        self.t = training_values
+    
     def predict(self):
         self.optimize_params()
 
@@ -488,6 +493,7 @@ class GPnetRegressor(GPnet):
             theta=self.theta,
             wantderiv=False,
         )
+        
 
         self.kstarstar_diag = np.diag(self.kstarstar)
 
@@ -519,6 +525,14 @@ class GPnetRegressor(GPnet):
 
         return (self.mean, self.s)
 
+    def calc_ktot(self):
+        self.ktot = self.kernel(
+        nodes_a = self.Graph.nodes,
+        nodes_b = self.Graph.nodes,
+        theta = self.theta,
+        wantderiv=False
+        )
+        
     def predict_RW(self):
         # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
