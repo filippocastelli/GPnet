@@ -284,12 +284,24 @@ class GPnet:
         nodes_to_drop = [x for x in nodelist if x not in nodeset]
         cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-
-        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        d_squared = (p.values / theta[2]) ** 2
-
+        
         d1 = len(nodes_a)
         d2 = len(nodes_b)
+        
+        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
+        
+        
+        if (isinstance(theta[0], np.ndarray)):
+            p_dim = np.tile(p.values, (len(theta[0]),1,1))
+            theta2_dim = np.tile(theta[2],(d2, d1, 1 )).T
+        else:
+            p_dim = p.values
+            theta2_dim = theta[2]
+        
+
+        d_squared = (p_dim / theta2_dim) ** 2
+
+
 
         exp1 = np.exp(-0.5 * d_squared)
 

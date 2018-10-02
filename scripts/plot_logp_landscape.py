@@ -13,7 +13,7 @@ from matplotlib import cm
 lattice_m = 15
 lattice_n = 15
 N = 100     # numero punti training
-n = 100    # numero punti test
+n = 90    # numero punti test
 ntest = 9
 deg = 4 #connectivity degree
 #%%
@@ -26,6 +26,9 @@ a= GPnetRegressor(Graph = G, ntrain=N, ntest=n, theta=[1.36, 0.1, 0.01, 0.36])
 #a= GPnetRegressor(totnodes=220, ntrain=N, ntest=n, theta=[1.36, 0.1, 0.01, 0.36], optimize=False)
 
 a.predict()
+
+theta_dim = [[0.1, 0.2, 0.1],[.1, 0.2, 0.1],[0.1, 0.2, 0.1],[0.1, 0.2, 0.1]]
+a.kernel(a.training_nodes, a.test_nodes, theta_dim, wantderiv=False)
 #%%
 #a.plot_latent()
 a.plot_predict_2d()
