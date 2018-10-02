@@ -14,8 +14,8 @@ from numpy import unravel_index
 #%%
 lattice_m = 15
 lattice_n = 15
-N = 100     # numero punti training
-n = 100    # numero punti test
+N = 400    # numero punti training
+n = 200    # numero punti test
 ntest = 9
 deg = 4 #connectivity degree
 
@@ -27,12 +27,12 @@ G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
 #%%
 #a= GPnetRegressor(Graph = G, ntrain=N*n, theta=[1.36, 0.1, 0.01, 0.36])
 
-p0 = 1.36
+p0 = 0.1
 p1 = 0.1
-p2 = 0.01
-p3 = 0.36
+p2 = 0.2
+p3 = 0.01
 
-a= GPnetRegressor(totnodes=220, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize=False, seed = seed)
+a= GPnetRegressor(totnodes=600, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize=False, seed = seed)
 a.plot_graph()
 a.calc_ktot()
 #a.predict()
@@ -59,11 +59,10 @@ a.plot_predict_2d()
 #%%
 #                 
 # Plot LML landscape
-theta0 = np.linspace(-2, 2, 40)
-theta1 = np.linspace(-5, 2, 40)
-theta2 = np.linspace(-5, 5, 40)
-theta3 = np.linspace(-5, 4, 40)
-#theta4 = np.linspace(-10, 10, 10)
+theta0 = np.linspace(-10, 10, 10)
+theta1 = np.linspace(-5, 2, 10)
+theta2 = np.linspace(-5, 5, 10)
+theta3 = np.linspace(-10, 10, 10)
 
 #%%
 Theta1, Theta2 = np.meshgrid(theta1, theta2)

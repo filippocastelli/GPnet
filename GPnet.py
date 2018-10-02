@@ -293,31 +293,32 @@ class GPnet:
         
         if (isinstance(theta[0], np.ndarray)):
             p_dim = np.tile(p.values, (len(theta[0]),1,1))
-            theta2_dim = np.tile(theta[2],(d2, d1, 1 )).T
+            theta_dim = np.tile(theta.T, (d2,d1,1,1)).T
+            
         else:
             p_dim = p.values
-            theta2_dim = theta[2]
+            theta_dim = theta
         
 
-        d_squared = (p_dim / theta2_dim) ** 2
+        d_squared = (p_dim / theta_dim[2]) ** 2
 
 
 
         exp1 = np.exp(-0.5 * d_squared)
 
-        k = theta[0] + theta[1] * exp1
+        k = theta_dim[0] + theta_dim[1] * exp1
 
         if wantderiv:
             K = np.zeros((d1, d2, len(theta) + 1))
             # K[:,:,0] is the original covariance matrix
             K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-            K[:, :, 1] = theta[0]
-            K[:, :, 2] = theta[1] * exp1
-            K[:, :, 3] = theta[1] * exp1 * d_squared
-            K[:, :, 4] = theta[3] * np.eye(d1, d2)
+            K[:, :, 1] = theta_dim[0]
+            K[:, :, 2] = theta_dim[1] * exp1
+            K[:, :, 3] = theta_dim[1] * exp1 * d_squared
+            K[:, :, 4] = theta_dim[3] * np.eye(d1, d2)
             return K
         else:
-            return k + measnoise * theta[2] * np.eye(d1, d2)
+            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
 
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
@@ -614,26 +615,55 @@ class GPnetRegressor(GPnet):
 
     def logPosterior(self, theta, *args):
         data, t = args
+        t1 = t.copy()
+        t1v = t1.values
+        d1 = len(data)
+        theta = np.squeeze(theta)
+        if (isinstance(theta[0], np.ndarray)):
+#            print("hey")
+#            p_dim = np.tile(p.values, (len(theta[0]),1,1))
+            theta_dim = np.tile(theta.T, (d1,d1,1,1)).T
+            t1v = np.tile(t1v, (len(theta_dim[0]), 1))
+        
+        else:
+            theta_dim = theta
+            
+            
         k = self.kernel(data, data, theta, wantderiv=False)
         try:
             L = np.linalg.cholesky(k)  # Line 2
         except np.linalg.LinAlgError:
-            return np.inf
+            return np.full(len(theta[0]), np.inf)
         # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
 
         # L = np.linalg.cholesky(k)
-        alpha = np.linalg.solve(L, t)
-        alpha.resize(len(alpha), 1)
-        t1 = t.copy()
-        t1v = t1.values
-        t1v.resize(len(t1), 1)
-        log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
-        log_likelihood_dims -= np.log(np.diag(L)).sum()
-        log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
-        logp = log_likelihood_dims.sum(-1)  # sum over dimensions
-        # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
-        # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
-        # print("logp is ",-logp)
+        
+        if (isinstance(theta[0], np.ndarray)):
+
+            alpha = np.linalg.solve(L, t1v)
+            #alpha.resize(len(alpha), 1)
+#            t1v.resize(len(t1), 1)
+            log_likelihood_dims = -0.5 * np.diag(t1v*alpha)
+#            log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
+            log_likelihood_dims -= np.log(np.diagonal(L, axis1=1, axis2=2)).sum(axis=1)
+            log_likelihood_dims -= np.squeeze(np.tile(k.shape[1], (1, len(theta[0]))) / 2 * np.log(2 * np.pi))
+            logp = log_likelihood_dims  # sum over dimensions
+            # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
+            # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
+            # print("logp is ",-logp)
+        else:
+            alpha = np.linalg.solve(L, t)
+            alpha.resize(len(alpha), 1)
+            t1v.resize(len(t1), 1)
+            log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
+            log_likelihood_dims = -0.5 * np.trace(t1v*alpha)
+            log_likelihood_dims -= np.log(np.diag(L)).sum()
+            log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
+            logp = log_likelihood_dims.sum(-1)  # sum over dimensions
+            # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
+            # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
+            # print("logp is ",-logp)
+        
         return -logp
 
     def oldgradLogPosterior(self, theta, *args):
