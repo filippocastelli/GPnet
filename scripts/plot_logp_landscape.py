@@ -29,6 +29,7 @@ a.predict()
 
 theta_dim = [[0.1, 0.2, 0.1],[.1, 0.2, 0.1],[0.1, 0.2, 0.1],[0.1, 0.2, 0.1]]
 a.kernel(a.training_nodes, a.test_nodes, theta_dim, wantderiv=False)
+#a.logPosterior(theta_dim, a.training_nodes, a.t)
 #%%
 #a.plot_latent()
 a.plot_predict_2d()
