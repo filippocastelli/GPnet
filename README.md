@@ -1,5 +1,5 @@
 # GPnet
-Gaussian Process Regression and Classification on network-like topologies
+Gaussian Process Regression and Classification on Graphs
 
 Code still in alpha concept proofing and is based on the code from Chapter 18 of Machine Learning: An Algorithmic Perspective (2nd Edition) by Stephen Marsland, implements the algorithms in Chapters 2 and 3 of Gaussian Processes for Machine Learning by C.E. Rasmussen.
 
