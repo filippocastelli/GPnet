@@ -9,3 +9,4 @@ GPR3.py
 *.pyc
 *.pyc
 .ipynb_checkpoints/report_notebook-checkpoint.ipynb
+__pycache__/GPnet.cpython-36.pyc
