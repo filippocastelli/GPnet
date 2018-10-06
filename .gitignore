@@ -8,3 +8,4 @@ GPR3+.py
 GPR3.py
 *.pyc
 *.pyc
+.ipynb_checkpoints/report_notebook-checkpoint.ipynb
