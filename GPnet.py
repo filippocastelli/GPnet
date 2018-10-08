@@ -292,8 +292,8 @@ class GPnet:
         
         
         if (isinstance(theta[0], np.ndarray)):
-            p_dim = np.tile(p.values, (len(theta[0]),1,1))
-            theta_dim = np.tile(theta.T, (d2,d1,1,1)).T
+            p_dim = np.tile(p.values, (len(theta),1,1))
+            theta_dim = np.tile(theta, (d2,d1,1,1)).T
             
         else:
             p_dim = p.values
@@ -622,7 +622,7 @@ class GPnetRegressor(GPnet):
         if (isinstance(theta[0], np.ndarray)):
 #            print("hey")
 #            p_dim = np.tile(p.values, (len(theta[0]),1,1))
-            theta_dim = np.tile(theta.T, (d1,d1,1,1)).T
+            theta_dim = np.tile(theta, (d1,d1,1,1)).T
             t1v = np.tile(t1v, (len(theta_dim[0]), 1))
         
         else:
@@ -633,7 +633,10 @@ class GPnetRegressor(GPnet):
         try:
             L = np.linalg.cholesky(k)  # Line 2
         except np.linalg.LinAlgError:
-            return np.full(len(theta[0]), np.inf)
+            if (isinstance(theta[0], np.ndarray)):
+                return np.full(len(theta[0]), -np.inf)
+            else:
+                return -np.inf
         # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
 
         # L = np.linalg.cholesky(k)
@@ -646,7 +649,7 @@ class GPnetRegressor(GPnet):
             log_likelihood_dims = -0.5 * np.diag(t1v*alpha)
 #            log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
             log_likelihood_dims -= np.log(np.diagonal(L, axis1=1, axis2=2)).sum(axis=1)
-            log_likelihood_dims -= np.squeeze(np.tile(k.shape[1], (1, len(theta[0]))) / 2 * np.log(2 * np.pi))
+            log_likelihood_dims -= np.squeeze(np.tile(k.shape[1], (1, len(theta))) / 2 * np.log(2 * np.pi))
             logp = log_likelihood_dims  # sum over dimensions
             # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
             # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
