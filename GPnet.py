@@ -144,7 +144,7 @@ class GPnet:
         self.seed = 0
 
         self.is_trained = False
-        self.optimize_flag = optimize
+        self.optimize = optimize
 
         self.theta = theta
 
@@ -306,7 +306,8 @@ class GPnet:
 
         exp1 = np.exp(-0.5 * d_squared)
 
-        k = theta_dim[0] + theta_dim[1] * exp1
+        #k = theta_dim[0] + theta_dim[1] * exp1 
+        k = theta_dim[0] + theta_dim[1] * exp1 + measnoise * theta_dim[3] * np.eye(d1, d2)
 
         if wantderiv:
             K = np.zeros((d1, d2, len(theta) + 1))
@@ -318,7 +319,8 @@ class GPnet:
             K[:, :, 4] = theta_dim[3] * np.eye(d1, d2)
             return K
         else:
-            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
+#            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
+            return k
 
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
@@ -722,17 +724,29 @@ class GPnetRegressor(GPnet):
         return -log_likelihood_gradient
 
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
-        if self.optimize_flag == True:
-            self.theta = so.fmin_cg(
-                self.logPosterior,
-                self.theta,
-                fprime=self.gradLogPosterior,
-                args=(self.training_nodes, self.t),
-                gtol=gtol,
-                maxiter=200,
-                disp=1,
-            )
+        if self.optimize != False:
+            print('> Optimizing parameters')
+            print('method used: ', self.optimize['method'])
+            print('bounds: ', self.optimize['bounds'])
+            res = so.minimize(fun=self.logPosterior, x0=self.theta, 
+                                     args=(self.training_nodes, self.t),
+                                     method=self.optimize['method'],
+                                     bounds=self.optimize['bounds'],
+                                     options={'disp':True})
+            self.theta = res['x']
+            print('new parameters: ', self.theta)
         return self
+#            self.theta = so.fmin_cg(
+#                self.logPosterior,
+#                self.theta,
+#                fprime=self.gradLogPosterior,
+#                args=(self.training_nodes, self.t),
+#                gtol=gtol,
+#                maxiter=200,
+#                disp=1,
+#            )
+        
+    
 
     def gen_cmap(self):
         self.vmin = min(self.t.min(), self.mean.min())
