@@ -11,11 +11,16 @@ import matplotlib.pylab as pl
 from matplotlib import cm
 import pandas as pd
 from numpy import unravel_index
+import itertools
+from tqdm import tqdm
+
+
+
 #%%
 lattice_m = 15
 lattice_n = 15
-N = 400    # numero punti training
-n = 200    # numero punti test
+N = 50   # numero punti training
+n = 20 # numero punti test
 ntest = 9
 deg = 4 #connectivity degree
 
@@ -27,15 +32,24 @@ G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
 #%%
 #a= GPnetRegressor(Graph = G, ntrain=N*n, theta=[1.36, 0.1, 0.01, 0.36])
 
-p0 = 0.1
-p1 = 0.1
-p2 = 0.2
-p3 = 0.01
+p0 = np.log(2.95)
+p0box = [np.log(2), np.log(10)]
+p1 = np.log(0.5)
+p1box = [np.log(4), np.log(10)]
+p2 = np.log(1)
+p2box = [np.log(1), np.log(10)]
+p3 = np.log(0.9)
+p3box = [np.log(2), np.log(10)]
 
-a= GPnetRegressor(totnodes=600, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize=False, seed = seed)
-a.plot_graph()
+box = [p0box, p1box, p2box, p3box]
+#theta2 = [-122.94043421,  -74.86144938,    7.76378688,   -4.60517019]
+a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize={'method': 'SLSQP', 'bounds':box}, seed = seed)
+#a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=theta2, optimize=True, seed = seed)
+
+#a.plot_graph()
 a.calc_ktot()
-#a.predict()
+a.predict()
+a.plot_predict_2d()
 #%%
 #a.plot_latent()
 #a.plot_predict_2d()
@@ -59,11 +73,12 @@ a.plot_predict_2d()
 #%%
 #                 
 # Plot LML landscape
-theta0 = np.linspace(-10, 10, 10)
-theta1 = np.linspace(-5, 2, 10)
-theta2 = np.linspace(-5, 5, 10)
-theta3 = np.linspace(-10, 10, 10)
+theta0 = np.linspace(-10, 10, 20)
+theta1 = np.linspace(-5, 2, 20)
+theta2 = np.linspace(-5, 5, 20)
+theta3 = np.linspace(-10, 10, 20)
 
+theta =[theta0, theta1, theta2, theta3]
 #%%
 Theta1, Theta2 = np.meshgrid(theta1, theta2)
 LML0 = [[a.logPosterior([p0, Theta1[i, j], Theta2[i, j], p3], a.training_nodes, a.t ) for i in range(Theta1.shape[0])] for j in range(Theta2.shape[1])]
@@ -81,6 +96,18 @@ Theta1, Theta3 = np.meshgrid(theta1, theta3)
 LML3 = [[a.logPosterior([p0, Theta2[i,j], p2, Theta3[i,j]], a.training_nodes, a.t ) for i in range(Theta1.shape[0])] for j in range(Theta3.shape[1])]
 LML3 = -np.array(LML3).T
 #%%
+#
+#iters = list(itertools.product(theta0, theta1, theta2, theta3))
+#
+#asd = a.logPosterior(iters[0:100], a.training_nodes, a.t)
+#for i in tqdm(range(len(iters))):
+#    A[i] = a.logPosterior(iters[i], a.training_nodes, a.t)
+#
+#A = A.reshape(len(theta0),len(theta1),len(theta2),len(theta3))
+#%%
+
+#%%
+
 #l.imshow(LML)
 fig, ax = pl.subplots(2,2, dpi=150
                       )
@@ -111,3 +138,4 @@ vmin1, vmax1 = np.nanmin(LML3[LML3!= -np.inf]), np.nanmax(LML3[LML3!= np.inf])
 fig.colorbar(cax3, ax=ax[1,1])
 
 #%%
+a.logPosterior([p0, 2,1, p3], a.training_nodes, a.t)
