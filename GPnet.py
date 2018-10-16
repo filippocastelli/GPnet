@@ -716,7 +716,7 @@ class GPnetRegressor(GPnet):
         log_likelihood_gradient_dim = np.zeros([len(data), len(data), len(theta)])
         for i in range(0, len(theta)):
             log_likelihood_gradient_dim[:, :, i] = 0.5 * np.dot(tmp, k[:, :, i + 1])
-            log_likelihood_gradient = np.trace(log_likelihood_gradient_dim[:, :, 1])
+            log_likelihood_gradient = np.trace(log_likelihood_gradient_dim, axis1=0)
 
         # log_likelihood_gradient_dims = 0.5 * np.einsum("ij,ijk->ijk", tmp, k[:, :, 1:])
         # log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
