@@ -1,4 +1,5 @@
 from __future__ import division
+from abc import ABCMeta, abstractmethod
 import numpy as np
 import matplotlib.pyplot as pl
 import scipy.optimize as so
@@ -61,6 +62,7 @@ COEFS = np.array(
 
 # %%
 class GPnet:
+    __metaclass_ = 'GPnet'
     """ GPnet class cointains common attributes and methods for GPnetClassifier 
     and GPnetRegressor
     
@@ -325,6 +327,10 @@ class GPnet:
 #            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
             return k
 
+    @abstractmethod
+    def logPosterior(self):
+        raise NotImplementedError("logPosterior() must be overridden by GPnetRegressor or GPnetClassifier")
+   
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
 
@@ -415,6 +421,10 @@ class GPnet:
             return [nodes]
         else:
             return nodes
+        
+#    def plot_lml_landscape(self, filename=False):
+#        
+#    def lml_landscape(self):
 
 
 class GPnetRegressor(GPnet):
