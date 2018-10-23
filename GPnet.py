@@ -328,7 +328,7 @@ class GPnet:
             return k
 
     @abstractmethod
-    def logPosterior(self):
+    def logPosterior(self, theta, *args):
         raise NotImplementedError("logPosterior() must be overridden by GPnetRegressor or GPnetClassifier")
    
     def logp(self):
@@ -422,10 +422,44 @@ class GPnet:
         else:
             return nodes
         
-#    def plot_lml_landscape(self, filename=False):
-#        
-#    def lml_landscape(self):
-
+    def plot_lml_landscape(self, plots, filename=False):
+        plcols = 3
+#        if len(plots)%plcols != 0:
+#            plrows = len(plots)//plcols +1
+#        else:
+#            plrows = len(plots)//plcols
+        plrows = len(plots)//plcols +1
+            
+        fig, ax = pl.subplots(plrows+1, plcols+1,dpi=150)
+        fig.suptitle("LML landscapes")
+                      
+        for index, item in enumerate(plots):
+            plot = plots[item]
+            lml = self.lml_landscape(self.theta, plot[0], plot[1], plot[2])
+            idx1 = index//plrows
+            idx2 = index%plcols
+            if len(plot)==4:
+                cax = ax[index//plrows ,index%plcols].pcolor(plot[1], plot[2], lml)
+            ax[idx1, idx2].plot([plot[3][0]], [plot[3][1]], marker='o', markersize=5, color="red")
+            ax[idx1, idx2].set(xlabel="theta"+str(plot[0][0]), ylabel="theta"+str(plot[0][1]))
+            ax[idx1, idx2].set_title(item)
+            fig.colorbar(cax, ax=ax[idx1, idx2])
+            
+            
+    def lml_landscape(self, theta, axidx, ax1, ax2):
+        
+        lml = np.zeros([len(ax1), len(ax2)])
+        
+        for i in range(len(ax1)):
+            for j in range(len(ax2)):
+                
+                params = theta
+                params[axidx[0]] = ax1[i]
+                params[axidx[1]] = ax2[j]
+                
+                lml[i,j] = -self.logPosterior(params, self.training_nodes, self.t)
+            
+        return lml.T
 
 class GPnetRegressor(GPnet):
     """

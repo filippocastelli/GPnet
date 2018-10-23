@@ -191,3 +191,5 @@ fig.colorbar(cax3, ax=ax[1,1])
 
 #%%
 a.logPosterior([p0, 2,1, p3], a.training_nodes, a.t)
+
+a.plot_lml_landscape({"1":[[1,2], theta1, theta2, [p1, p2]]})
