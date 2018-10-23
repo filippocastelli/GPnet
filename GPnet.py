@@ -161,7 +161,7 @@ class GPnet:
             
 
         else:
-            self.Graph = Graph
+            G = Graph
             self.totnodes = len(Graph.nodes)
         self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
         
@@ -397,7 +397,7 @@ class GPnet:
         )
 
         # f_post = mu + L*N(0,1)
-        f_post = self.mean.reshape(-1, 1) + np.dot(
+        f_post = self.fstar.reshape(-1, 1) + np.dot(
             L2, np.random.normal(size=(self.n, 5))
         )
         pl.figure()
@@ -485,12 +485,12 @@ class GPnetRegressor(GPnet):
     def set_training_values(self, training_values):
         self.t = training_values
     
-    def predict(self):
+    def oldpredict(self):
         self.optimize_params()
 
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
-        # self.mean_t = np.mean(self.t)
+        # self.fstar_t = np.mean(self.t)
         self.k = self.kernel(
             nodes_a=self.training_nodes,
             nodes_b=self.training_nodes,
@@ -531,7 +531,7 @@ class GPnetRegressor(GPnet):
             self.L.transpose(),
             np.linalg.solve(self.L, np.eye(len(self.training_nodes))),
         )
-        self.mean = np.squeeze(np.dot(self.kstar, np.dot(invk, self.t)))
+        self.fstar = np.squeeze(np.dot(self.kstar, np.dot(invk, self.t)))
         self.var = self.kstarstar_diag - np.diag(
             np.dot(self.kstar, np.dot(invk, self.kstar.T))
         )
@@ -541,7 +541,7 @@ class GPnetRegressor(GPnet):
         print("succesfully trained model")
         self.is_trained = True
 
-        return (self.mean, self.s)
+        return (self.fstar, self.s)
 
     def calc_ktot(self):
         self.ktot = self.kernel(
@@ -551,13 +551,13 @@ class GPnetRegressor(GPnet):
         wantderiv=False
         )
         
-    def predict_RW(self):
+    def predict(self):
         # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
 
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
-        # self.mean_t = np.mean(self.t)
+        # self.fstar_t = np.mean(self.t)
 
         self.k = self.kernel(
             nodes_a=self.training_nodes,
@@ -598,7 +598,7 @@ class GPnetRegressor(GPnet):
         self.fstar = np.dot(self.kstar, self.alpha)
         self.v = np.linalg.solve(self.L, self.kstar.T)
         self.V = self.kstarstar_diag - np.dot(self.v.T, self.v)
-
+        self.s = np.sqrt(np.diag(self.V))
         print("succesfully trained model")
         self.is_trained = True
 
@@ -617,8 +617,20 @@ class GPnetRegressor(GPnet):
             - np.shape(data)[0] / 2. * np.log(2 * np.pi)
         )
         return -logp
-
+    
     def logPosterior(self, theta, *args):
+        data, t = args
+        
+        
+        try:
+            L = np.linalg.cholesky(self.kernel(data, data, theta, wantderiv=False))
+        except np.linalg.LinAlgError:
+            return -np.inf
+        alpha = np.linalg.solve(L.T, np.linalg.solve(L, t))        
+        logp = -0.5*np.dot(t.T, alpha) - np.sum(np.log(np.diag(L))) - self.k.shape[0] * 0.5 * np.log(2*np.pi)
+        return -logp
+
+    def oldlogPosterior(self, theta, *args):
         data, t = args
         t1 = t.copy()
         t1v = t1.values
@@ -629,11 +641,8 @@ class GPnetRegressor(GPnet):
 #            p_dim = np.tile(p.values, (len(theta[0]),1,1))
             theta_dim = np.tile(theta, (d1,d1,1,1)).T
             t1v = np.tile(t1v, (len(theta_dim[0]), 1))
-        
         else:
             theta_dim = theta
-            
-            
         k = self.kernel(data, data, theta, wantderiv=False)
         try:
             L = np.linalg.cholesky(k)  # Line 2
@@ -752,8 +761,8 @@ class GPnetRegressor(GPnet):
     
 
     def gen_cmap(self):
-        self.vmin = min(self.t.min(), self.mean.min())
-        self.vmax = max(self.t.max(), self.mean.max())
+        self.vmin = min(self.t.min(), self.fstar.min())
+        self.vmax = max(self.t.max(), self.fstar.max())
         self.cmap = pl.cm.inferno_r
 
     def plot_predict_2d(self, filename=False):
@@ -764,10 +773,10 @@ class GPnetRegressor(GPnet):
             pl.plot(self.pvtdist)
 
         pl.gca().fill_between(
-            self.test_nodes, self.mean - self.s, self.mean + self.s, color="#dddddd"
+            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
         )
-        pl.plot(self.test_nodes, self.mean, "ro", ms=4)
-        pl.plot(self.test_nodes, self.mean, "r--", lw=2)
+        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
         pl.title("Gaussian Process Mean and Variance")
         loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
         pl.title(
@@ -816,7 +825,7 @@ class GPnetRegressor(GPnet):
             self.Graph,
             self.plot_pos,
             nodelist=self.test_nodes,
-            node_color=self.mean,
+            node_color=self.fstar,
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
