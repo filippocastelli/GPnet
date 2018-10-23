@@ -158,11 +158,14 @@ class GPnet:
             print(self.totnodes, "nodes")
             print("node degree", self.deg)
             G = nx.random_regular_graph(deg, totnodes)
-            self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
+            
 
         else:
             self.Graph = Graph
             self.totnodes = len(Graph.nodes)
+        self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
+        
+        
         self.training_nodes = training_nodes
         self.test_nodes = test_nodes
         # self.other_nodes = other_nodes
