@@ -432,6 +432,7 @@ class GPnet:
             return nodes
 
     def plot_lml_landscape(self, plots, params, filename=False):
+        pl.rcParams.update({'font.size': 5})
         plcols = 3
         #        if len(plots)%plcols != 0:
         #            plrows = len(plots)//plcols +1
@@ -440,27 +441,28 @@ class GPnet:
         plrows = len(plots) // plcols
         print(plrows, " - ", plcols, "<")
 
-        fig, ax = pl.subplots(plrows, plcols, dpi=150)
-        fig.suptitle("LML landscapes")
-
+        fig, ax = pl.subplots(plrows, plcols, dpi=300)
+        fig.suptitle("LML landscapes", size = 10)
+        fig.subplots_adjust(wspace = 0.3, hspace = 0.4)
         for index, item in enumerate(plots):
-            print("Index: ", index)
+            #print("Index: ", index)
             plot = plots[item]
             lml = self.lml_landscape(params, plot[0], plot[1], plot[2])
             idx1 = index // plcols
             idx2 = index % plcols
-            print(idx1, " - ", idx2)
+            #print(idx1, " - ", idx2)
             if len(plot) == 4:
                 cax = ax[idx1, idx2].pcolor(plot[2], plot[1], lml)
             ax[idx1, idx2].plot(
                 [plot[3][0]], [plot[3][1]], marker="o", markersize=5, color="red"
             )
             ax[idx1, idx2].set(
-                xlabel="theta" + str(plot[0][0]), ylabel="theta" + str(plot[0][1])
+                xlabel="theta" + str(plot[0][0]), ylabel="theta" + str(plot[0][1]), title = item
             )
-            ax[idx1, idx2].set_title(item)
+            #ax[idx1, idx2].set_title(item)
             fig.colorbar(cax, ax=ax[idx1, idx2])
-
+            
+                
     def lml_landscape(self, theta, axidx, ax1, ax2):
 
         lml = np.zeros([len(ax1), len(ax2)])
