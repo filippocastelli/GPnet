@@ -669,13 +669,13 @@ class GPnetRegressor(GPnet):
     def logPosterior(self, theta, *args):
         data, t = args
         
-        
+        K = self.kernel(data, data, theta, wantderiv=False)
         try:
-            L = np.linalg.cholesky(self.kernel(data, data, theta, wantderiv=False))
+            L = np.linalg.cholesky(K)
         except np.linalg.LinAlgError:
             return -np.inf
         alpha = np.linalg.solve(L.T, np.linalg.solve(L, t))        
-        logp = -0.5*np.dot(t.T, alpha) - np.sum(np.log(np.diag(L))) - self.k.shape[0] * 0.5 * np.log(2*np.pi)
+        logp = -0.5*np.dot(t.T, alpha) - np.sum(np.log(np.diag(L))) - K.shape[0] * 0.5 * np.log(2*np.pi)
         return -logp
 
     def oldlogPosterior(self, theta, *args):
@@ -805,8 +805,6 @@ class GPnetRegressor(GPnet):
 #                maxiter=200,
 #                disp=1,
 #            )
-        
-    
 
     def gen_cmap(self):
         self.vmin = min(self.t.min(), self.fstar.min())
