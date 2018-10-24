@@ -62,7 +62,7 @@ COEFS = np.array(
 
 # %%
 class GPnet:
-    __metaclass_ = 'GPnet'
+    __metaclass_ = "GPnet"
     """ GPnet class cointains common attributes and methods for GPnetClassifier 
     and GPnetRegressor
     
@@ -99,6 +99,8 @@ class GPnet:
         advance
     optimize: bool
         if True activates the kernel parameter optimizer
+    relabel_nodes: bool
+        if True the nodes are relabelled to consecutive integers
         
     Methods
     ----------
@@ -139,16 +141,19 @@ class GPnet:
         test_nodes,
         theta,
         optimize,
-    ):
+        relabel_nodes,
+        ):
         self.N = ntrain
         self.n = ntest
         self.deg = deg
-        self.seed = 0
+        self.seed = seed
 
         self.is_trained = False
         self.optimize = optimize
 
         self.theta = theta
+        
+        self.relabel_nodes = relabel_nodes
 
         if totnodes == False:
             self.totnodes = self.N + self.n
@@ -160,14 +165,16 @@ class GPnet:
             print(self.totnodes, "nodes")
             print("node degree", self.deg)
             G = nx.random_regular_graph(deg, totnodes)
-            
 
         else:
             G = Graph
             self.totnodes = len(Graph.nodes)
-        self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
-        
-        
+            
+        self.Graph = Graph
+        if relabel_nodes == True :
+            print(' i did the thing')
+            self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
+
         self.training_nodes = training_nodes
         self.test_nodes = test_nodes
         # self.other_nodes = other_nodes
@@ -257,7 +264,7 @@ class GPnet:
     #        else:
     #            return k + measnoise * theta[2] * np.eye(d1, d2)
 
-    def kernel(self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True):
+    def kernel(self, nodes_a, nodes_b, theta, measnoise=1.0, wantderiv=True):
         """
         Kernel Function
         ---------------
@@ -289,30 +296,30 @@ class GPnet:
         nodes_to_drop = [x for x in nodelist if x not in nodeset]
         cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-        
+
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-        
+
         p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-        
-        
-        if (isinstance(theta[0], np.ndarray)):
-            p_dim = np.tile(p.values, (len(theta),1,1))
-            theta_dim = np.tile(theta, (d2,d1,1,1)).T
-            
+
+        if isinstance(theta[0], np.ndarray):
+            p_dim = np.tile(p.values, (len(theta), 1, 1))
+            theta_dim = np.tile(theta, (d2, d1, 1, 1)).T
+
         else:
             p_dim = p.values
             theta_dim = theta
-        
 
         d_squared = (p_dim / theta_dim[2]) ** 2
 
-
-
         exp1 = np.exp(-0.5 * d_squared)
 
-        #k = theta_dim[0] + theta_dim[1] * exp1 
-        k = theta_dim[0] + theta_dim[1] * exp1 + measnoise * theta_dim[3] * np.eye(d1, d2)
+        # k = theta_dim[0] + theta_dim[1] * exp1
+        k = (
+            theta_dim[0]
+            + theta_dim[1] * exp1
+            + measnoise * theta_dim[3] * np.eye(d1, d2)
+        )
 
         if wantderiv:
             K = np.zeros((d1, d2, len(theta) + 1))
@@ -324,18 +331,20 @@ class GPnet:
             K[:, :, 4] = theta_dim[3] * np.eye(d1, d2)
             return K
         else:
-#            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
+            #            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
             return k
 
     @abstractmethod
     def logPosterior(self, theta, *args):
-        raise NotImplementedError("logPosterior() must be overridden by GPnetRegressor or GPnetClassifier")
-   
+        raise NotImplementedError(
+            "logPosterior() must be overridden by GPnetRegressor or GPnetClassifier"
+        )
+
     def logp(self):
         return -self.logPosterior(self.theta, self.training_nodes, self.t)
 
     def plot_graph(self, filename=False):
-        pl.figure(figsize=[10, 9])
+        pl.figure(figsize=[15, 9])
         pl.title("Graph")
         # node positions
         # draw nodes
@@ -421,49 +430,53 @@ class GPnet:
             return [nodes]
         else:
             return nodes
-        
+
     def plot_lml_landscape(self, plots, params, filename=False):
         plcols = 3
-#        if len(plots)%plcols != 0:
-#            plrows = len(plots)//plcols +1
-#        else:
-#            plrows = len(plots)//plcols
-        plrows = len(plots)//plcols
-        print(plrows," - ", plcols, "<")
-            
-        fig, ax = pl.subplots(plrows, plcols,dpi=150)
+        #        if len(plots)%plcols != 0:
+        #            plrows = len(plots)//plcols +1
+        #        else:
+        #            plrows = len(plots)//plcols
+        plrows = len(plots) // plcols
+        print(plrows, " - ", plcols, "<")
+
+        fig, ax = pl.subplots(plrows, plcols, dpi=150)
         fig.suptitle("LML landscapes")
-                      
+
         for index, item in enumerate(plots):
             print("Index: ", index)
             plot = plots[item]
             lml = self.lml_landscape(params, plot[0], plot[1], plot[2])
-            idx1 = index//plcols
-            idx2 = index%plcols
+            idx1 = index // plcols
+            idx2 = index % plcols
             print(idx1, " - ", idx2)
-            if len(plot)==4:
+            if len(plot) == 4:
                 cax = ax[idx1, idx2].pcolor(plot[2], plot[1], lml)
-            ax[idx1, idx2].plot([plot[3][0]], [plot[3][1]], marker='o', markersize=5, color="red")
-            ax[idx1, idx2].set(xlabel="theta"+str(plot[0][0]), ylabel="theta"+str(plot[0][1]))
+            ax[idx1, idx2].plot(
+                [plot[3][0]], [plot[3][1]], marker="o", markersize=5, color="red"
+            )
+            ax[idx1, idx2].set(
+                xlabel="theta" + str(plot[0][0]), ylabel="theta" + str(plot[0][1])
+            )
             ax[idx1, idx2].set_title(item)
             fig.colorbar(cax, ax=ax[idx1, idx2])
-            
-            
+
     def lml_landscape(self, theta, axidx, ax1, ax2):
-        
+
         lml = np.zeros([len(ax1), len(ax2)])
-        
+
         for i in range(len(ax1)):
             for j in range(len(ax2)):
-                
+
                 params = theta
                 params[axidx[0]] = ax1[i]
                 params[axidx[1]] = ax2[j]
-                #print(axidx[0], axidx[1])
-                
-                lml[i,j] = -self.logPosterior(params, self.training_nodes, self.t)
-            
+                # print(axidx[0], axidx[1])
+
+                lml[i, j] = -self.logPosterior(params, self.training_nodes, self.t)
+
         return lml
+
 
 class GPnetRegressor(GPnet):
     """
@@ -507,7 +520,7 @@ class GPnetRegressor(GPnet):
         test_nodes=False,
         theta=[0.1, 0.1, 0.1],
         optimize=False,
-    ):
+        relabel_nodes = False,):
 
         super(GPnetRegressor, self).__init__(
             Graph,
@@ -521,6 +534,7 @@ class GPnetRegressor(GPnet):
             test_nodes,
             theta,
             optimize,
+            relabel_nodes,
         )
         self.pivot_flag = False
         if training_values == False:
@@ -532,7 +546,7 @@ class GPnetRegressor(GPnet):
 
     def set_training_values(self, training_values):
         self.t = training_values
-    
+
     def oldpredict(self):
         self.optimize_params()
 
@@ -559,7 +573,6 @@ class GPnetRegressor(GPnet):
             theta=self.theta,
             wantderiv=False,
         )
-        
 
         self.kstarstar_diag = np.diag(self.kstarstar)
 
@@ -593,12 +606,12 @@ class GPnetRegressor(GPnet):
 
     def calc_ktot(self):
         self.ktot = self.kernel(
-        nodes_a = self.Graph.nodes,
-        nodes_b = self.Graph.nodes,
-        theta = self.theta,
-        wantderiv=False
+            nodes_a=self.Graph.nodes,
+            nodes_b=self.Graph.nodes,
+            theta=self.theta,
+            wantderiv=False,
         )
-        
+
     def predict(self):
         # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
@@ -662,20 +675,24 @@ class GPnetRegressor(GPnet):
         logp = (
             -0.5 * np.dot(t.transpose(), beta)
             - np.sum(np.log(np.diag(L)))
-            - np.shape(data)[0] / 2. * np.log(2 * np.pi)
+            - np.shape(data)[0] / 2.0 * np.log(2 * np.pi)
         )
         return -logp
-    
+
     def logPosterior(self, theta, *args):
         data, t = args
-        
+
         K = self.kernel(data, data, theta, wantderiv=False)
         try:
             L = np.linalg.cholesky(K)
         except np.linalg.LinAlgError:
             return -np.inf
-        alpha = np.linalg.solve(L.T, np.linalg.solve(L, t))        
-        logp = -0.5*np.dot(t.T, alpha) - np.sum(np.log(np.diag(L))) - K.shape[0] * 0.5 * np.log(2*np.pi)
+        alpha = np.linalg.solve(L.T, np.linalg.solve(L, t))
+        logp = (
+            -0.5 * np.dot(t.T, alpha)
+            - np.sum(np.log(np.diag(L)))
+            - K.shape[0] * 0.5 * np.log(2 * np.pi)
+        )
         return -logp
 
     def oldlogPosterior(self, theta, *args):
@@ -684,10 +701,10 @@ class GPnetRegressor(GPnet):
         t1v = t1.values
         d1 = len(data)
         theta = np.squeeze(theta)
-        if (isinstance(theta[0], np.ndarray)):
-#            print("hey")
-#            p_dim = np.tile(p.values, (len(theta[0]),1,1))
-            theta_dim = np.tile(theta, (d1,d1,1,1)).T
+        if isinstance(theta[0], np.ndarray):
+            #            print("hey")
+            #            p_dim = np.tile(p.values, (len(theta[0]),1,1))
+            theta_dim = np.tile(theta, (d1, d1, 1, 1)).T
             t1v = np.tile(t1v, (len(theta_dim[0]), 1))
         else:
             theta_dim = theta
@@ -695,23 +712,25 @@ class GPnetRegressor(GPnet):
         try:
             L = np.linalg.cholesky(k)  # Line 2
         except np.linalg.LinAlgError:
-            if (isinstance(theta[0], np.ndarray)):
+            if isinstance(theta[0], np.ndarray):
                 return np.full(len(theta[0]), -np.inf)
             else:
                 return -np.inf
         # return (-np.inf, np.zeros_like(theta)) if eval_gradient else -np.inf
 
         # L = np.linalg.cholesky(k)
-        
-        if (isinstance(theta[0], np.ndarray)):
+
+        if isinstance(theta[0], np.ndarray):
 
             alpha = np.linalg.solve(L, t1v)
-            #alpha.resize(len(alpha), 1)
-#            t1v.resize(len(t1), 1)
-            log_likelihood_dims = -0.5 * np.diag(t1v*alpha)
-#            log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
+            # alpha.resize(len(alpha), 1)
+            #            t1v.resize(len(t1), 1)
+            log_likelihood_dims = -0.5 * np.diag(t1v * alpha)
+            #            log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
             log_likelihood_dims -= np.log(np.diagonal(L, axis1=1, axis2=2)).sum(axis=1)
-            log_likelihood_dims -= np.squeeze(np.tile(k.shape[1], (1, len(theta))) / 2 * np.log(2 * np.pi))
+            log_likelihood_dims -= np.squeeze(
+                np.tile(k.shape[1], (1, len(theta))) / 2 * np.log(2 * np.pi)
+            )
             logp = log_likelihood_dims  # sum over dimensions
             # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
             # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
@@ -721,14 +740,14 @@ class GPnetRegressor(GPnet):
             alpha.resize(len(alpha), 1)
             t1v.resize(len(t1), 1)
             log_likelihood_dims = -0.5 * np.einsum("ik,ik->k", t1v, alpha)
-            log_likelihood_dims = -0.5 * np.trace(t1v*alpha)
+            log_likelihood_dims = -0.5 * np.trace(t1v * alpha)
             log_likelihood_dims -= np.log(np.diag(L)).sum()
             log_likelihood_dims -= k.shape[0] / 2 * np.log(2 * np.pi)
             logp = log_likelihood_dims.sum(-1)  # sum over dimensions
             # beta = np.linalg.solve(L.transpose(), np.linalg.solve(L,t))
             # logp = -0.5*np.dot(t.transpose(),beta) - np.sum(np.log(np.diag(L))) - np.shape(data)[0] /2. * np.log(2*np.pi)
             # print("logp is ",-logp)
-        
+
         return -logp
 
     def oldgradLogPosterior(self, theta, *args):
@@ -785,26 +804,30 @@ class GPnetRegressor(GPnet):
 
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
         if self.optimize != False:
-            print('> Optimizing parameters')
-            print('method used: ', self.optimize['method'])
-            print('bounds: ', self.optimize['bounds'])
-            res = so.minimize(fun=self.logPosterior, x0=self.theta, 
-                                     args=(self.training_nodes, self.t),
-                                     method=self.optimize['method'],
-                                     bounds=self.optimize['bounds'],
-                                     options={'disp':True})
-            self.theta = res['x']
-            print('new parameters: ', self.theta)
+            print("> Optimizing parameters")
+            print("method used: ", self.optimize["method"])
+            print("bounds: ", self.optimize["bounds"])
+            res = so.minimize(
+                fun=self.logPosterior,
+                x0=self.theta,
+                args=(self.training_nodes, self.t),
+                method=self.optimize["method"],
+                bounds=self.optimize["bounds"],
+                options={"disp": True},
+            )
+            self.theta = res["x"]
+            print("new parameters: ", self.theta)
         return self
-#            self.theta = so.fmin_cg(
-#                self.logPosterior,
-#                self.theta,
-#                fprime=self.gradLogPosterior,
-#                args=(self.training_nodes, self.t),
-#                gtol=gtol,
-#                maxiter=200,
-#                disp=1,
-#            )
+
+    #            self.theta = so.fmin_cg(
+    #                self.logPosterior,
+    #                self.theta,
+    #                fprime=self.gradLogPosterior,
+    #                args=(self.training_nodes, self.t),
+    #                gtol=gtol,
+    #                maxiter=200,
+    #                disp=1,
+    #            )
 
     def gen_cmap(self):
         self.vmin = min(self.t.min(), self.fstar.min())
@@ -812,7 +835,7 @@ class GPnetRegressor(GPnet):
         self.cmap = pl.cm.inferno_r
 
     def plot_predict_2d(self, filename=False):
-        pl.figure()
+        pl.figure(figsize=[15, 9])
         pl.clf()
         pl.plot(self.training_nodes, self.t, "r+", ms=20)
         if self.pivot_flag == True:
@@ -842,7 +865,7 @@ class GPnetRegressor(GPnet):
             print("need to train a model first, use GPnetRegressor.predict()")
             return
 
-        pl.figure(figsize=[10, 9])
+        pl.figure(figsize=[15, 9])
         pl.title("Prediction plot")
 
         self.gen_cmap()
@@ -939,6 +962,7 @@ class GPnetClassifier(GPnet):
         test_nodes=False,
         theta=[0.1, 0.1, 0.1],
         optimize=False,
+        relabel_nodes=False,
     ):
 
         super(GPnetClassifier, self).__init__(
@@ -953,6 +977,7 @@ class GPnetClassifier(GPnet):
             test_nodes,
             theta,
             optimize,
+            relabel_nodes,
         )
 
         self.pivot_flag = False
@@ -978,7 +1003,7 @@ class GPnetClassifier(GPnet):
         (f, logq, a) = self.NRiteration(data, targets, theta)
         return -logq
 
-    def NRiteration_old(self, data, targets, theta, tol=0.1, phif=1e100, scale=1.):
+    def NRiteration_old(self, data, targets, theta, tol=0.1, phif=1e100, scale=1.0):
         # print("iteration")
         # pag 46 RASMUSSEN-WILLIAMS
         K = self.kernel(data, data, theta, wantderiv=False)
@@ -1017,7 +1042,7 @@ class GPnetClassifier(GPnet):
                 np.log(p)
                 - 0.5 * np.dot(f.transpose(), np.dot(np.linalg.inv(K), f))
                 - 0.5 * np.sum(np.log(np.diag(L)))
-                - np.shape(data)[0] / 2. * np.log(2 * np.pi)
+                - np.shape(data)[0] / 2.0 * np.log(2 * np.pi)
             )
             # print(phif)
             # print("loop",np.sum((oldphif-phif)**2))
@@ -1025,7 +1050,7 @@ class GPnetClassifier(GPnet):
                 break
             elif count > 100:
                 count = 0
-                scale = scale / 2.
+                scale = scale / 2.0
 
         s = -targets * f
         ps = np.where(s > 0, s, 0)
@@ -1037,7 +1062,7 @@ class GPnetClassifier(GPnet):
         )
         return (f, logq, a)
 
-    def NRiteration(self, data, targets, theta, tol=0.1, phif=1e100, scale=1.):
+    def NRiteration(self, data, targets, theta, tol=0.1, phif=1e100, scale=1.0):
         # print("iteration")
         # pag 46 RASMUSSEN-WILLIAMS
         K = self.kernel(data, data, theta, wantderiv=False)
@@ -1075,7 +1100,7 @@ class GPnetClassifier(GPnet):
                 np.log(p)
                 - 0.5 * np.dot(f.transpose(), np.dot(np.linalg.inv(K), f))
                 - 0.5 * np.sum(np.log(np.diag(L)))
-                - np.shape(data)[0] / 2. * np.log(2 * np.pi)
+                - np.shape(data)[0] / 2.0 * np.log(2 * np.pi)
             )
             # print(phif)
             # print("loop",np.sum((oldphif-phif)**2))
@@ -1083,7 +1108,7 @@ class GPnetClassifier(GPnet):
                 break
             elif count > 100:
                 count = 0
-                scale = scale / 2.
+                scale = scale / 2.0
 
         s = -targets * f
         # ps = np.where(s > 0, s, 0)
@@ -1176,7 +1201,7 @@ class GPnetClassifier(GPnet):
             * erf(gamma * np.sqrt(alpha / (alpha + lambdas_mat ** 2)))
             / (2 * np.sqrt(Vmat * 2 * np.pi))
         )
-        pi_star = (COEFS * integrals).sum(axis=0) + .5 * COEFS.sum()
+        pi_star = (COEFS * integrals).sum(axis=0) + 0.5 * COEFS.sum()
 
         self.predicted_probs = np.vstack((1 - pi_star, pi_star)).T
         self.s = np.sqrt(self.V)
@@ -1216,7 +1241,7 @@ class GPnetClassifier(GPnet):
             print("need to train a model first, use GPnetClassifier.predict()")
             return
 
-        pl.figure(figsize=[10, 9])
+        pl.figure(figsize=[15, 9])
         pl.title("Prediction plot")
 
         self.gen_cmap()
