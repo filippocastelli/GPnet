@@ -3,6 +3,8 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 import matplotlib.pyplot as pl
 import scipy.optimize as so
+import scipy.linalg as sl
+import scipy.sparse as ss
 import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 import networkx as nx
@@ -171,9 +173,13 @@ class GPnet:
             self.totnodes = len(Graph.nodes)
             
         self.Graph = Graph
+        
+        self.orig_labels_dict = dict(zip(G, range(len(G.nodes))))
+        self.orig_labels_invdict = dict([[v,k] for k,v in self.orig_labels_dict.items()])
+        
         if relabel_nodes == True :
-            print(' i did the thing')
-            self.Graph = nx.relabel_nodes(G, dict(zip(G, range(len(G.nodes)))))
+            print('> Relabeling nodes, orig. names stored in self.orig_labels_dict')
+            self.Graph = nx.relabel_nodes(G, self.orig_labels_dict)
 
         self.training_nodes = training_nodes
         self.test_nodes = test_nodes
@@ -233,36 +239,76 @@ class GPnet:
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
 
-    #    def kernel2(
-    #        self, nodes_a, nodes_b, theta, measnoise=1., wantderiv=True, print_theta=False
-    #    ):
-    #        theta = np.squeeze(theta)
-    #        theta = np.exp(theta)
-    #        # graph_distance_matrix = shortest_path_graph_distances(Graph)
-    #        nodelist = list(self.Graph.nodes)
-    #        nodeset = set(nodes_a).union(set(nodes_b))
-    #        nodes_to_drop = [x for x in nodelist if x not in nodeset]
-    #        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
-    #        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-    #        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-    #        distances = (p.values / theta[1]) ** 2
-    #
-    #        d1 = len(nodes_a)
-    #        d2 = len(nodes_b)
-    #
-    #        # k = 2 +theta[0] * np.exp(-0.5*distances)
-    #        k = (theta[0] ** 2) * np.exp(-0.5 * distances)
-    #
-    #        if wantderiv:
-    #            K = np.zeros((d1, d2, len(theta) + 1))
-    #            # K[:,:,0] is the original covariance matrix
-    #            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-    #            K[:, :, 1] = 2 * k
-    #            K[:, :, 2] = (k * distances) / theta[1]
-    #            K[:, :, 3] = theta[2] * np.eye(d1, d2)
-    #            return K
-    #        else:
-    #            return k + measnoise * theta[2] * np.eye(d1, d2)
+#    def kernel(self, nodes_a, nodes_b, theta, measnoise=1.0, wantderiv=True):
+#        """
+#        Kernel Function
+#        ---------------
+#        
+#        k(nodes_a, nodes_b) = exp(a) + exp(b) * exp(-1/2 * (dist/exp(c))^2) + I*d
+#        
+#        with theta=[a,b,c,d]
+#        
+#        
+#        Parameters
+#        ----------
+#        
+#        nodes_a, nodes_b : list
+#            list of nodes between which the correlation matrix is calculated
+#        theta: 
+#            parameters, described aboce
+#        measnoise: 
+#            scale for measured noise ( just testing purposes )
+#        wantderiv:
+#            if True returns a k[len(nodes_a), len(nodes_b), len(theta) +1] ndarray
+#            k[:,:,0] is the covariance matrix
+#            K[:,:,j] are the the j-th partial derivatives respect to parameters
+#        """
+#        theta = np.squeeze(theta)
+#        theta = np.exp(theta)
+#        # graph_distance_matrix = shortest_path_graph_distances(Graph)
+#        nodelist = list(self.Graph.nodes)
+#        nodeset = set(nodes_a).union(set(nodes_b))
+#        nodes_to_drop = [x for x in nodelist if x not in nodeset]
+#        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
+#        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+#
+#        d1 = len(nodes_a)
+#        d2 = len(nodes_b)
+#
+#        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
+#
+#        if isinstance(theta[0], np.ndarray):
+#            p_dim = np.tile(p.values, (len(theta), 1, 1))
+#            theta_dim = np.tile(theta, (d2, d1, 1, 1)).T
+#
+#        else:
+#            p_dim = p.values
+#            theta_dim = theta
+#
+#        d_squared = (p_dim / theta_dim[2]) ** 2
+#
+#        exp1 = np.exp(-0.5 * d_squared)
+#
+#        # k = theta_dim[0] + theta_dim[1] * exp1
+#        k = (
+#            theta_dim[0]
+#            + theta_dim[1] * exp1
+#            + measnoise * theta_dim[3] * np.eye(d1, d2)
+#        )
+#
+#        if wantderiv:
+#            K = np.zeros((d1, d2, len(theta) + 1))
+#            # K[:,:,0] is the original covariance matrix
+#            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
+#            K[:, :, 1] = theta_dim[0]
+#            K[:, :, 2] = theta_dim[1] * exp1
+#            K[:, :, 3] = theta_dim[1] * exp1 * d_squared
+#            K[:, :, 4] = theta_dim[3] * np.eye(d1, d2)
+#            return K
+#        else:
+#            #            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
+#            return k
+
 
     def kernel(self, nodes_a, nodes_b, theta, measnoise=1.0, wantderiv=True):
         """
@@ -288,52 +334,42 @@ class GPnet:
             k[:,:,0] is the covariance matrix
             K[:,:,j] are the the j-th partial derivatives respect to parameters
         """
-        theta = np.squeeze(theta)
+        if not len(theta) == 1:
+            theta = np.squeeze(theta)
+            
         theta = np.exp(theta)
         # graph_distance_matrix = shortest_path_graph_distances(Graph)
         nodelist = list(self.Graph.nodes)
         nodeset = set(nodes_a).union(set(nodes_b))
         nodes_to_drop = [x for x in nodelist if x not in nodeset]
-        cols_to_drop = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
-        rows_to_drop = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
-
+        cols_to_dropset = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
+        rows_to_dropset = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
+        
+        if self.relabel_nodes == False:
+            cols_to_drop = [self.orig_labels_dict[idx] for idx in cols_to_dropset]
+            rows_to_drop = [self.orig_labels_dict[idx] for idx in rows_to_dropset]
+        else:
+            cols_to_drop = list(cols_to_dropset)
+            rows_to_drop = list(rows_to_dropset)
+            
+        
+        # need to keep track of node names somehow
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-
-        p = self.dist.drop(cols_to_drop).drop(rows_to_drop, 1)
-
-        if isinstance(theta[0], np.ndarray):
-            p_dim = np.tile(p.values, (len(theta), 1, 1))
-            theta_dim = np.tile(theta, (d2, d1, 1, 1)).T
-
-        else:
-            p_dim = p.values
-            theta_dim = theta
-
-        d_squared = (p_dim / theta_dim[2]) ** 2
-
-        exp1 = np.exp(-0.5 * d_squared)
-
-        # k = theta_dim[0] + theta_dim[1] * exp1
-        k = (
-            theta_dim[0]
-            + theta_dim[1] * exp1
-            + measnoise * theta_dim[3] * np.eye(d1, d2)
-        )
-
-        if wantderiv:
-            K = np.zeros((d1, d2, len(theta) + 1))
-            # K[:,:,0] is the original covariance matrix
-            K[:, :, 0] = k + measnoise * theta[2] * np.eye(d1, d2)
-            K[:, :, 1] = theta_dim[0]
-            K[:, :, 2] = theta_dim[1] * exp1
-            K[:, :, 3] = theta_dim[1] * exp1 * d_squared
-            K[:, :, 4] = theta_dim[3] * np.eye(d1, d2)
-            return K
-        else:
-            #            return k + measnoise * theta_dim[2] * np.eye(d1, d2)
-            return k
-
+        
+        
+        Lnorm = ss.csc_matrix(nx.normalized_laplacian_matrix(self.Graph))
+        assert theta[0] < 1, "Lambda must be < 1" % theta[0]
+        K = sl.expm(theta[0] * Lnorm).toarray()
+        
+        k = np.delete(K, cols_to_drop, axis=0)
+        k = np.delete(k, rows_to_drop, axis=1)
+        
+        k = k + measnoise*theta[1]
+        
+        return k
+        
+        
     @abstractmethod
     def logPosterior(self, theta, *args):
         raise NotImplementedError(
@@ -375,8 +411,10 @@ class GPnet:
         # draw edges
         ec = nx.draw_networkx_edges(self.Graph, self.plot_pos, alpha=0.2)
         # legend
-        labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
-
+        if self.relabel_nodes == True:
+            labels = nx.draw_networkx_labels(self.Graph,labels=self.orig_labels_invdict, pos=self.plot_pos, font_color="k")
+        else:
+            labels = nx.draw_networkx_labels(self.Graph, pos=self.plot_pos, font_color="k")
         # legend
         training_patch = red_circle
         training_patch._label = "training nodes"
@@ -450,17 +488,23 @@ class GPnet:
             lml = self.lml_landscape(params, plot[0], plot[1], plot[2])
             idx1 = index // plcols
             idx2 = index % plcols
+            if plrows == 1:
+                idx = idx2
+            else:
+                idx = (idx1, idx2)
+                
+                
             #print(idx1, " - ", idx2)
             if len(plot) == 4:
-                cax = ax[idx1, idx2].pcolor(plot[2], plot[1], lml)
-            ax[idx1, idx2].plot(
+                cax = ax[idx].pcolor(plot[2], plot[1], lml)
+            ax[idx].plot(
                 [plot[3][0]], [plot[3][1]], marker="o", markersize=5, color="red"
             )
-            ax[idx1, idx2].set(
+            ax[idx].set(
                 xlabel="theta" + str(plot[0][0]), ylabel="theta" + str(plot[0][1]), title = item
             )
             #ax[idx1, idx2].set_title(item)
-            fig.colorbar(cax, ax=ax[idx1, idx2])
+            fig.colorbar(cax, ax=ax[idx])
             
                 
     def lml_landscape(self, theta, axidx, ax1, ax2):
@@ -541,7 +585,7 @@ class GPnetRegressor(GPnet):
         self.pivot_flag = False
         if training_values == False:
             self.pivot_flag = True
-            self.pvtdist = self.pivot_distance(0)
+            self.pvtdist = self.pivot_distance(list(self.Graph.nodes)[0])
             self.t = self.pvtdist[self.training_nodes]
         else:
             self.t = training_values
@@ -620,8 +664,10 @@ class GPnetRegressor(GPnet):
 
         self.k_not_posdef_flag = False
         self.kstar_not_posdef_flag = False
-        # self.fstar_t = np.mean(self.t)
-
+        
+        self.t_mean = np.mean(self.t)
+        self.t_shifted = self.t - self.t_mean
+        
         self.k = self.kernel(
             nodes_a=self.training_nodes,
             nodes_b=self.training_nodes,
@@ -657,8 +703,8 @@ class GPnetRegressor(GPnet):
             return self
 
         self.L = np.linalg.cholesky(self.k)
-        self.alpha = np.linalg.solve(self.L.T, np.linalg.solve(self.L, self.t))
-        self.fstar = np.dot(self.kstar, self.alpha)
+        self.alpha = np.linalg.solve(self.L.T, np.linalg.solve(self.L, self.t_shifted))
+        self.fstar = np.dot(self.kstar, self.alpha) + self.t_mean
         self.v = np.linalg.solve(self.L, self.kstar.T)
         self.V = self.kstarstar_diag - np.dot(self.v.T, self.v)
         self.s = np.sqrt(np.diag(self.V))
@@ -850,9 +896,12 @@ class GPnetRegressor(GPnet):
         pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
         pl.title("Gaussian Process Mean and Variance")
         loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
+#        pl.title(
+#            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
+#            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
+#        )
         pl.title(
-            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
-            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
+                "Valore medio e margini a posteriori\n(lambda: %.3f)"%(self.theta[0])
         )
         pl.xlabel("nodes")
         pl.ylabel("values")
