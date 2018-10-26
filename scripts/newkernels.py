@@ -30,13 +30,13 @@ expmat2 = sl.expm(beta*mat)
 deg = 4
 N = 100
 n = 50
-lattice_m = 10
-lattice_n = 10
+lattice_m = 20
+lattice_n = 20
 
 import networkx as nx
 #G = nx.generators.florentine_families_graph()
-G = nx.generators.gnm_random_graph(10, 20)
-#G = nx.generators.lattice.grid_graph(dim = [lattice_m,lattice_n],periodic= False)
+#G = nx.generators.gnm_random_graph(10, 20)
+G = nx.generators.lattice.grid_graph(dim = [lattice_m,lattice_n],periodic= False)
 Gc = max(nx.connected_component_subgraphs(G), key = len)
 
 A = nx.adjacency_matrix(Gc)
@@ -59,7 +59,7 @@ K = sl.expm(l_scale * Lcsc)
 import sys
 sys.path.append("../")
 
-from GPnet import GPnetRegressor
+from GPnet import GPnetRegressor, GPnetClassifier
 #%%
 p0 = np.log(0.4)
 p0box = [np.log(0.01), np.log(0.99)]
@@ -90,5 +90,11 @@ plots = {"const vs lambda":    [[0,1], theta0, theta1, [p0,p1]],
          "const vs lambdaq1":    [[0,1], theta0, theta1, [p0,p1]],
          }
 
-a.plot_lml_landscape(plots, [p0, p1])
+#a.plot_lml_landscape(plots, [p0, p1])
 
+#%%
+
+b = GPnetClassifier(Graph = Gc, ntrain = 200, ntest = 200, theta = [np.log(0.2), np.log(4)], relabel_nodes= True, optimize = optimize)
+
+b.predict()
+b.plot_predict_graph()

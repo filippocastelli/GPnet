@@ -18,8 +18,8 @@ from tqdm import tqdm
 #%%
 lattice_m = 15
 lattice_n = 15
-N = 124   # numero punti training
-n = 100 # numero punti test
+N = 80   # numero punti training
+n = 80 # numero punti test
 ntest = 9
 deg = 5 #connectivity degree
 seed=1412
@@ -30,19 +30,16 @@ G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
 #%%
 #a= GPnetRegressor(Graph = G, ntrain=N*n, theta=[1.36, 0.1, 0.01, 0.36])
 
-p0 = np.log(2.95)
-p0box = [np.log(2), np.log(10)]
-p1 = np.log(0.5)
-p1box = [np.log(4), np.log(10)]
-p2 = np.log(1)
-p2box = [np.log(1), np.log(10)]
-p3 = np.log(10)
-p3box = [np.log(2), np.log(4)]
+p0 = np.log(0.2)
+p0box = [np.log(0.01), np.log(0.99)]
+p1 = np.log(5)
+p1box = [np.log(0.01), np.log(10)]
 
-box = [p0box, p1box, p2box, p3box]
+box = [p0box, p1box]
+
 #theta2 = [-122.94043421,  -74.86144938,    7.76378688,   -4.60517019]
-#a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize=False, seed = seed)
-a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize={'method':'SLSQP', 'bounds':box}, seed = seed)
+a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1], optimize=False, seed = seed)
+#a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1], optimize={'method':'SLSQP', 'bounds':box}, seed = seed)
 #a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize={'method': 'SLSQP', 'bounds':box}, seed = seed)
 #a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=theta2, optimize=True, seed = seed)
 
@@ -74,12 +71,16 @@ a.plot_predict_2d()
 #%%
 #                 
 # Plot LML landscape
-theta0 = np.linspace(-2, 2, 30)
+theta0 = np.linspace(-2, -0.01, 30)
 theta1 = np.linspace(-3, 3, 31)
-theta2 = np.linspace(-3, 3, 32)
-theta3 = np.linspace(-1, 1, 33)
 
-theta =[theta0, theta1, theta2, theta3]
+theta =[theta0, theta1]
+
+
+plots = {"const vs lambda":    [[0,1], theta0, theta1, [p0,p1]],
+         "const vs lambdaq":    [[0,1], theta0, theta1, [p0,p1]],
+         "const vs lambdaq1":    [[0,1], theta0, theta1, [p0,p1]],
+         }
 ##%%
 #Theta1, Theta2 = np.meshgrid(theta1, theta2)
 #LML0 = [[a.logPosterior([p0, Theta1[i, j], Theta2[i, j], p3], a.training_nodes, a.t ) for i in range(Theta1.shape[0])] for j in range(Theta2.shape[1])]
@@ -139,15 +140,14 @@ theta =[theta0, theta1, theta2, theta3]
 #fig.colorbar(cax3, ax=ax[1,1])
 
 #%%
-a.logPosterior([p0, 2,1, p3], a.training_nodes, a.t)
 
-plots = {"const vs const_scale":    [[0,1], theta0, theta1, [p0,p1]],
-         "const vs length_scale":   [[0,2], theta0, theta2, [p0,p2]],
-         "const vs noise_scale":    [[0,3], theta0, theta3, [p0,p3]],
-         "const_scale vs length_scale": [[1,2], theta1, theta2, [p1,p2]],
-         "const_scale vs noise_scale":  [[1,3], theta1, theta3, [p1,p3]],
-         "length_scale vs noise_scale": [[2,3], theta2, theta3, [p2,p3]],
-         }
+#plots = {"const vs const_scale":    [[0,1], theta0, theta1, [p0,p1]],
+#         "const vs length_scale":   [[0,2], theta0, theta2, [p0,p2]],
+#         "const vs noise_scale":    [[0,3], theta0, theta3, [p0,p3]],
+#         "const_scale vs length_scale": [[1,2], theta1, theta2, [p1,p2]],
+#         "const_scale vs noise_scale":  [[1,3], theta1, theta3, [p1,p3]],
+#         "length_scale vs noise_scale": [[2,3], theta2, theta3, [p2,p3]],
+#         }
 
 
-a.plot_lml_landscape(plots, [p0, p1, p2, p3])
+a.plot_lml_landscape(plots, [p0, p1])

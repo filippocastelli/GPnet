@@ -11,6 +11,7 @@ import networkx as nx
 import pandas as pd
 import random
 from scipy.special import erf
+import time
 
 # %%
 
@@ -238,6 +239,24 @@ class GPnet:
 
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
+    
+    def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
+        if self.optimize != False:
+            print("> Optimizing parameters")
+            print("method used: ", self.optimize["method"])
+            print("bounds: ", self.optimize["bounds"])
+            res = so.minimize(
+                fun=self.logPosterior,
+                x0=self.theta,
+                args=(self.training_nodes, self.t),
+                method=self.optimize["method"],
+                bounds=self.optimize["bounds"],
+                options={"disp": True},
+            )
+            self.theta = res["x"]
+            print("new parameters: ", self.theta)
+        return self
+
 
 #    def kernel(self, nodes_a, nodes_b, theta, measnoise=1.0, wantderiv=True):
 #        """
@@ -510,10 +529,9 @@ class GPnet:
     def lml_landscape(self, theta, axidx, ax1, ax2):
 
         lml = np.zeros([len(ax1), len(ax2)])
-
+        start = time.time()
         for i in range(len(ax1)):
             for j in range(len(ax2)):
-
                 params = theta
                 params[axidx[0]] = ax1[i]
                 params[axidx[1]] = ax2[j]
@@ -521,6 +539,9 @@ class GPnet:
 
                 lml[i, j] = -self.logPosterior(params, self.training_nodes, self.t)
 
+        stop = time.time()
+        
+        print("elapsed time: ", stop-start)
         return lml
 
 
@@ -849,24 +870,6 @@ class GPnetRegressor(GPnet):
         # log_likelihood_gradient = log_likelihood_gradient_dims.sum(-1)
         print(log_likelihood_gradient)
         return -log_likelihood_gradient
-
-    def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
-        if self.optimize != False:
-            print("> Optimizing parameters")
-            print("method used: ", self.optimize["method"])
-            print("bounds: ", self.optimize["bounds"])
-            res = so.minimize(
-                fun=self.logPosterior,
-                x0=self.theta,
-                args=(self.training_nodes, self.t),
-                method=self.optimize["method"],
-                bounds=self.optimize["bounds"],
-                options={"disp": True},
-            )
-            self.theta = res["x"]
-            print("new parameters: ", self.theta)
-        return self
-
     #            self.theta = so.fmin_cg(
     #                self.logPosterior,
     #                self.theta,
@@ -1209,7 +1212,9 @@ class GPnetClassifier(GPnet):
 
     def predict(self):
         # vedi algoritmo 3.2 Rasmussen
-
+        if self.optimize != False:
+            self.optimize_params()
+        
         K = self.kernel(
             self.training_nodes, self.training_nodes, self.theta, wantderiv=False
         )
