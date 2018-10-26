@@ -37,12 +37,12 @@ p1box = [np.log(4), np.log(10)]
 p2 = np.log(1)
 p2box = [np.log(1), np.log(10)]
 p3 = np.log(10)
-p3box = [np.log(1), np.log(4)]
+p3box = [np.log(2), np.log(4)]
 
 box = [p0box, p1box, p2box, p3box]
 #theta2 = [-122.94043421,  -74.86144938,    7.76378688,   -4.60517019]
-a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize=False, seed = seed)
-#a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize={'method':'SLSQP', 'bounds':box}, seed = seed)
+#a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize=False, seed = seed)
+a = GPnetRegressor(Graph = G, ntrain = N, ntest= n, theta = [p0, p1, p2, p3], optimize={'method':'SLSQP', 'bounds':box}, seed = seed)
 #a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=[p0, p1, p2, p3], optimize={'method': 'SLSQP', 'bounds':box}, seed = seed)
 #a= GPnetRegressor(totnodes=N+n, ntrain=N, ntest=n, theta=theta2, optimize=True, seed = seed)
 
