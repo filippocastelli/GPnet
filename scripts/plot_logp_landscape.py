@@ -18,18 +18,22 @@ ntest = 9
 deg = 4 #connectivity degree
 #%%
 #G = nx.random_regular_graph(deg, N+n + 10)
+
 G = nx.generators.lattice.grid_graph(dim = [lattice_m,lattice_n],periodic= False)
 G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
 #%%
-a= GPnetRegressor(Graph = G, ntrain=N, ntest=n, theta=[1.36, 0.1, 0.01, 0.36])
+a= GPnetClassifier(Graph = G, ntrain=N, ntest=n, theta=[1.36, 0.1, 0.01, 0.36])
 
 #a= GPnetRegressor(totnodes=220, ntrain=N, ntest=n, theta=[1.36, 0.1, 0.01, 0.36], optimize=False)
 
 a.predict()
 
 theta_dim = [[0.1, 0.2, 0.1],[.1, 0.2, 0.1],[0.1, 0.2, 0.1],[0.1, 0.2, 0.1]]
-a.kernel(a.training_nodes, a.test_nodes, theta_dim, wantderiv=False)
+a.kernel(a.training_nodes, a.test_nodes, a.theta, wantderiv=False)
 #a.logPosterior(theta_dim, a.training_nodes, a.t)
+
+
+
 #%%
 #a.plot_latent()
 a.plot_predict_2d()
