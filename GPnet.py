@@ -10,7 +10,7 @@ import networkx as nx
 import pandas as pd
 import random
 import time
-
+from tqdm import tqdm
 # %%
 class iconshapes:
     # circles
@@ -292,21 +292,47 @@ class GPnetBase:
         cols_to_dropset = set(nodes_to_drop).union(set(nodes_b) - set(nodes_a))
         rows_to_dropset = set(nodes_to_drop).union(set(nodes_a) - set(nodes_b))
 
+        cols_to_keepset = nodeset - cols_to_dropset
+        rows_to_keepset = nodeset - rows_to_dropset
+        
         if self.relabel_nodes == False:
             cols_to_drop = [self.orig_labels_dict[idx] for idx in cols_to_dropset]
             rows_to_drop = [self.orig_labels_dict[idx] for idx in rows_to_dropset]
+            cols_to_keep = [self.orig_labels_dict[idx] for idx in cols_to_keepset]
+            rows_to_keep = [self.orig_labels_dict[idx] for idx in rows_to_keepset]
         else:
             cols_to_drop = list(cols_to_dropset)
             rows_to_drop = list(rows_to_dropset)
-
+            cols_to_keep = list(cols_to_keepset)
+            rows_to_keep = list(rows_to_keepset)
+            
         # need to keep track of node names somehow
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-
+        
         Lnorm = ss.csc_matrix(nx.normalized_laplacian_matrix(self.Graph))
+        
+        #maybe it's wrong
+#        Lnorm = Lnorm[:, cols_to_keep]
+#        Lnorm = Lnorm[rows_to_keep, :]
+        #ok ofcourse it doesnt work
+        
         assert theta[0] < 1, "Lambda must be < 1" % theta[0]
-        K = sl.expm(theta[0] * Lnorm).toarray()
-
+        
+        #Lnorm2 = ss.csc_matrix(np.eye(len(self.Graph.nodes())) + theta[0]*nx.normalized_laplacian_matrix(self.Graph))
+        # DIFFUSION PROCESS KERNEL
+        
+        K = sl.expm(-theta[0] * Lnorm).toarray()
+        
+        # REGULARIZED LAPLACIAN KERNEL
+        #K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm)
+        
+        
+        #P-STEP
+        
+        #K = sl.matrix_power(ss.csc_matrix(theta[0]*np.eye(len(self.Graph.nodes()))) - Lnorm, 3)
+        #K = np.linalg.matrix_power(theta[0]*np.eye(len(nodelist)) - Lnorm.toarray(), 5)
+        
         k = np.delete(K, cols_to_drop, axis=0)
         k = np.delete(k, rows_to_drop, axis=1)
 
@@ -367,11 +393,11 @@ class GPnetBase:
                 self.Graph, pos=self.plot_pos, font_color="k"
             )
         # legend
-        training_patch = red_circle
+        training_patch = iconshapes.red_circle
         training_patch._label = "training nodes"
-        test_patch = green_circle
+        test_patch = iconshapes.green_circle
         test_patch._label = "test nodes"
-        other_patch = blue_circle
+        other_patch = iconshapes.blue_circle
         other_patch._label = "other nodes"
 
         pl.legend(handles=[training_patch, test_patch, other_patch])
@@ -428,7 +454,7 @@ class GPnetBase:
         #        else:
         #            plrows = len(plots)//plcols
         plrows = len(plots) // plcols
-        print(plrows, " - ", plcols, "<")
+        #print(plrows, " - ", plcols, "<")
 
         fig, ax = pl.subplots(plrows, plcols, dpi=300)
         fig.suptitle("LML landscapes", size=10)
@@ -437,32 +463,53 @@ class GPnetBase:
             # print("Index: ", index)
             plot = plots[item]
             lml = self.lml_landscape(params, plot[0], plot[1], plot[2])
+            idxmax = np.unravel_index(np.argmax(lml, axis=None), lml.shape)
+            print(idxmax, lml[idxmax])
             idx1 = index // plcols
             idx2 = index % plcols
-            if plrows == 1:
+            if plrows == 0:
                 idx = idx2
             else:
                 idx = (idx1, idx2)
 
             # print(idx1, " - ", idx2)
-            if len(plot) == 4:
-                cax = ax[idx].pcolor(plot[2], plot[1], lml)
-            ax[idx].plot(
-                [plot[3][0]], [plot[3][1]], marker="o", markersize=5, color="red"
-            )
-            ax[idx].set(
-                xlabel="theta" + str(plot[0][0]),
-                ylabel="theta" + str(plot[0][1]),
-                title=item,
-            )
-            # ax[idx1, idx2].set_title(item)
-            fig.colorbar(cax, ax=ax[idx])
+            if plrows != 0:
+                if len(plot) == 4:
+                    cax = ax[idx].pcolor(plot[2], plot[1], lml)
+                ax[idx].plot(
+                    [plot[3][1]], [plot[3][0]], marker="o", markersize=5, color="red"
+                )
+                ax[idx].plot(
+                    [plot[2][idxmax[0]]], [plot[1][idxmax[1]]], marker="o", markersize=5, color="blue"
+                )
+                ax[idx].set(
+                    xlabel="theta" + str(plot[0][0]),
+                    ylabel="theta" + str(plot[0][1]),
+                    title=item,
+                )
+                # ax[idx1, idx2].set_title(item)
+                fig.colorbar(cax, ax=ax[idx])
+            else:
+                if len(plot) == 4:
+                    cax = pl.pcolor(plot[2], plot[1], lml)
+                pl.plot([plot[3][1]], [plot[3][0]], marker="o", markersize=5, color="red")
+                pl.plot([plot[2][idxmax[0]]], [plot[1][idxmax[1]]], marker="x", markersize=5, color="blue"
+                )
+                pl.xlabel("theta" + str(plot[0][0]))
+                pl.ylabel("theta" + str(plot[0][1]))
+                pl.title(item)
+#                fig.set(
+#                        xlabel="theta" + str(plot[0][0]),
+#                        ylabel="theta" + str(plot[0][1]),
+#                        title=item,
+#                )
+                pl.colorbar(cax)
+                    
 
     def lml_landscape(self, theta, axidx, ax1, ax2):
-
+        print("> Calculating LML Landscape")
         lml = np.zeros([len(ax1), len(ax2)])
-        start = time.time()
-        for i in range(len(ax1)):
+        for i in tqdm(range(len(ax1))):
             for j in range(len(ax2)):
                 params = theta
                 params[axidx[0]] = ax1[i]
@@ -470,8 +517,4 @@ class GPnetBase:
                 # print(axidx[0], axidx[1])
 
                 lml[i, j] = -self.logPosterior(params, self.training_nodes, self.t)
-
-        stop = time.time()
-
-        print("elapsed time: ", stop - start)
         return lml

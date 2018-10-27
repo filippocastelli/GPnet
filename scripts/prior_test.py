@@ -30,9 +30,9 @@ G = nx.relabel_nodes(G, dict(zip(G,range(len(G.nodes)))))
 #%%
 #a= GPnetRegressor(Graph = G, ntrain=N*n, theta=[1.36, 0.1, 0.01, 0.36])
 
-p0 = np.log(0.2)
+p0 = np.log(0.6)
 p0box = [np.log(0.01), np.log(0.99)]
-p1 = np.log(5)
+p1 = np.log(2)
 p1box = [np.log(0.01), np.log(10)]
 
 box = [p0box, p1box]
@@ -79,7 +79,6 @@ theta =[theta0, theta1]
 
 plots = {"const vs lambda":    [[0,1], theta0, theta1, [p0,p1]],
          "const vs lambdaq":    [[0,1], theta0, theta1, [p0,p1]],
-         "const vs lambdaq1":    [[0,1], theta0, theta1, [p0,p1]],
          }
 ##%%
 #Theta1, Theta2 = np.meshgrid(theta1, theta2)
