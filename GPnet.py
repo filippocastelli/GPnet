@@ -102,6 +102,10 @@ class GPnetBase:
         if True activates the kernel parameter optimizer
     relabel_nodes: bool
         if True the nodes are relabelled to consecutive integers
+    kerneltype: string
+        "diffusion"
+        "regularized_laplacian"
+        "pstep_walk"
         
     Methods
     ----------
@@ -143,6 +147,7 @@ class GPnetBase:
         theta,
         optimize,
         relabel_nodes,
+        kerneltype,
     ):
         self.N = ntrain
         self.n = ntest
@@ -155,7 +160,7 @@ class GPnetBase:
         self.theta = theta
 
         self.relabel_nodes = relabel_nodes
-
+        self.kerneltype = kerneltype
         if totnodes == False:
             self.totnodes = self.N + self.n
         else:
@@ -316,13 +321,22 @@ class GPnetBase:
 #        Lnorm = Lnorm[:, cols_to_keep]
 #        Lnorm = Lnorm[rows_to_keep, :]
         #ok ofcourse it doesnt work
+        kernel_list = ("diffusion", "regularized_laplacian", "pstep_walk")
         
-        assert theta[0] < 1, "Lambda must be < 1" % theta[0]
-        
+        assert (self.kerneltype in kernel_list), "kerneltype not implemented"
+        if self.kerneltype == "diffusion":
+            assert theta[0] < 1, "Lambda must be < 1" % theta[0]
+            K = sl.expm(-theta[0] * Lnorm).toarray()
+        elif self.kerneltype == "regularized_laplacian":
+            K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm).toarray()
+        elif self.kerneltype == "pstep_walk":
+            assert theta[0] >= 2, "a must be >=2" % theta[0]
+            K = np.asarray(np.linalg.matrix_power(theta[0]*np.eye(len(self.Graph.nodes())) - Lnorm, int(theta[1])))
+            
         #Lnorm2 = ss.csc_matrix(np.eye(len(self.Graph.nodes())) + theta[0]*nx.normalized_laplacian_matrix(self.Graph))
         # DIFFUSION PROCESS KERNEL
         
-        K = sl.expm(-theta[0] * Lnorm).toarray()
+        
         
         # REGULARIZED LAPLACIAN KERNEL
         #K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm)

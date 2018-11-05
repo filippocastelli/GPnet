@@ -66,10 +66,10 @@ from GPnetClassifier import GPnetClassifier
 
 
 #%%
-p0 = np.log(0.3)
-p0box = [np.log(0.2), np.log(0.99)]
-p1 = np.log(5)
-p1box = [np.log(0.01), np.log(10)]
+p0 = np.log(2.1)
+p0box = [np.log(2.1), np.log(10)]
+p1 = np.log(3)
+p1box = [np.log(2), np.log(5)]
 
 
 theta0 = np.linspace(np.log(0.01), np.log(0.99), 4)
@@ -84,7 +84,9 @@ box = [p0box, p1box]
 optimize={'method':'SLSQP', 'bounds':box}
 
 #%% 
-a = GPnetRegressor(Graph = Gc, ntrain =100, ntest=300, theta = [p0, p1], relabel_nodes= True, optimize=False)
+#a = GPnetRegressor(Graph = Gc, ntrain =100, ntest=300, theta = [p0, p1], relabel_nodes= True, optimize=False)
+a = GPnetRegressor(Graph = Gc, kerneltype = "pstep_walk", ntrain =100, ntest=300, theta = [np.log(2.4), np.log(3)], relabel_nodes= True, optimize=False)
+
 #a.kernel(a.training_nodes, a.training_nodes, [np.log(0.5),1], wantderiv=False)
 
 a.predict()
@@ -103,8 +105,8 @@ a.pivot_flag = False
 a.set_training_values(new_training)
 a.predict()
 #%%
-theta0 = np.linspace(np.log(0.01), np.log(0.99), 20)
-theta1 = np.linspace(np.log(0.1), np.log(10), 20)
+theta0 = np.linspace(np.log(2.1), np.log(10), 20)
+theta1 = np.linspace(np.log(2), np.log(5), 20)
 
 theta =[theta0, theta1]
 

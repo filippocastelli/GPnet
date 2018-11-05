@@ -47,6 +47,7 @@ class GPnetRegressor(GPnetBase):
         theta=[0.1, 0.1, 0.1],
         optimize=False,
         relabel_nodes=False,
+        kerneltype = "diffusion",
     ):
 
         super(GPnetRegressor, self).__init__(
@@ -62,6 +63,7 @@ class GPnetRegressor(GPnetBase):
             theta,
             optimize,
             relabel_nodes,
+            kerneltype,
         )
         self.pivot_flag = False
         if training_values == False:

@@ -43,6 +43,7 @@ class GPnetClassifier(GPnetBase):
         theta=[0.1, 0.1, 0.1],
         optimize=False,
         relabel_nodes=False,
+        kerneltype = "diffusion"
     ):
 
         super(GPnetClassifier, self).__init__(
@@ -58,6 +59,7 @@ class GPnetClassifier(GPnetBase):
             theta,
             optimize,
             relabel_nodes,
+            kerneltype,
         )
 
         self.pivot_flag = False
