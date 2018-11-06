@@ -198,20 +198,26 @@ class GPnetRegressor(GPnetBase):
         if self.pivot_flag == True:
             pl.plot(self.pvtdist)
 
-        pl.gca().fill_between(
-            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-        )
-        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+#        pl.gca().fill_between(
+#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+#        )
+#        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+#        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        pl.errorbar(self.test_nodes, self.fstar,self.s,
+                    barsabove = True,
+                    ecolor = "black",
+                    linewidth = 1,
+                    capsize = 5,
+                    fmt = 'o')
         pl.title("Gaussian Process Mean and Variance")
         #loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
         #        pl.title(
         #            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
         #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
         #        )
-        pl.title(
-            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
-        )
+#        pl.title(
+#            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
+#        )
         pl.xlabel("nodes")
         pl.ylabel("values")
         if type(filename) is str:
