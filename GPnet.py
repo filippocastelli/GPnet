@@ -350,7 +350,7 @@ class GPnetBase:
         k = np.delete(K, cols_to_drop, axis=0)
         k = np.delete(k, rows_to_drop, axis=1)
 
-        k = k + measnoise * theta[1]
+        k = k + measnoise * theta[-1]
 
         return k
 
