@@ -198,14 +198,16 @@ class GPnetBase:
             print((self.totnodes - (self.N + self.n)), " idle nodes")
 
             self.random_assign_nodes()
-
+            
+        self.assign_other_nodes()
         self.calc_shortest_paths()
 
         # init plot stuff
         self.plot_pos = nx.kamada_kawai_layout(self.Graph)
 
         # END INIT #
-
+        return
+    
     def pivot_distance(self, pivot=0):
         pivot_distance = pd.Series(
             dict(nx.single_source_shortest_path_length(self.Graph, pivot))
@@ -235,13 +237,18 @@ class GPnetBase:
         )
         self.test_nodes.sort()
 
+        self.assign_other_nodes()
+        return self
+    
+    def assign_other_nodes(self):
         self.other_nodes = (
             set(self.Graph.nodes) - set(self.training_nodes) - set(self.test_nodes)
         )
         self.other_nodes = list(self.other_nodes)
         self.other_nodes.sort()
+        
         return self
-
+    
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
 

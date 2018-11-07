@@ -73,6 +73,9 @@ class GPnetRegressor(GPnetBase):
         else:
             self.t = training_values
 
+        return
+    
+    
     def set_training_values(self, training_values):
         self.t = training_values
 
@@ -195,6 +198,7 @@ class GPnetRegressor(GPnetBase):
         pl.figure(figsize=[15, 9])
         pl.clf()
         pl.plot(self.training_nodes, self.t, "r+", ms=20)
+        pl.plot(self.trainin)
         if self.pivot_flag == True:
             pl.plot(self.pvtdist)
 
