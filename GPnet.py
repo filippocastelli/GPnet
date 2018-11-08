@@ -241,6 +241,7 @@ class GPnetBase:
         return self
     
     def assign_other_nodes(self):
+        
         self.other_nodes = (
             set(self.Graph.nodes) - set(self.training_nodes) - set(self.test_nodes)
         )

@@ -253,11 +253,12 @@ class GPnetClassifier(GPnetBase):
         pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
         pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
 
-        loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
-        pl.title(
-            "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
-            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
-        )
+        loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_labels)
+#        pl.title(
+#            "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
+#            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
+#        )
+        pl.title("Latent Process Mean and Variance")
         pl.xlabel("nodes")
         pl.ylabel("values")
         if type(filename) is str:
@@ -304,7 +305,7 @@ class GPnetClassifier(GPnetBase):
             self.Graph,
             self.plot_pos,
             nodelist=self.test_nodes,
-            node_color=self.predicted_probs.T[0],
+            node_color=self.predicted_probs.T[1],
             with_labels=True,
             node_size=200,
             cmap=self.cmap,
