@@ -247,11 +247,18 @@ class GPnetClassifier(GPnetBase):
         pl.clf()
         pl.plot(self.training_nodes, self.training_labels, "r+", ms=20)
 
-        pl.gca().fill_between(
-            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-        )
+#        pl.gca().fill_between(
+#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+#        )
+        pl.errorbar(self.test_nodes, self.fstar,self.s,
+                    barsabove = True,
+                    ecolor = "black",
+                    linewidth = 1,
+                    capsize = 5,
+                    fmt = 'o')
+        
         pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        #pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
 
         loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_labels)
 #        pl.title(
