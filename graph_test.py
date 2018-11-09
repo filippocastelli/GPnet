@@ -22,8 +22,8 @@ noise = np.log(0.01)
 walk_length = np.log(4)
 
 gpr = GPnetRegressor(Graph = G,
-                     ntrain = 200,
-                     ntest= 25,
+                     ntrain = 125,
+                     ntest= 100,
                      theta = [const, walk_length, noise],
                      seed = 123,
                      kerneltype = "pstep_walk",
@@ -45,8 +45,6 @@ train_labels = labels[train_nodes]
 
 #%%
 gpc = GPnetClassifier(Graph = G,
-                      ntrain = 125,
-                      ntest = 100,
                       training_nodes = train_nodes, 
                       test_nodes = test_nodes,
                       training_values = train_labels,
@@ -61,5 +59,4 @@ gpc = GPnetClassifier(Graph = G,
 gpc.predict()
 gpc.plot_graph()
 gpc.plot_latent()
-gpc.plot_predict_2d()
 gpc.plot_predict_graph()
