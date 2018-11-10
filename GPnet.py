@@ -212,6 +212,7 @@ class GPnetBase:
         pivot_distance = pd.Series(
             dict(nx.single_source_shortest_path_length(self.Graph, pivot))
         ).sort_index()
+        pivot_distance.name = "pivot distance"
         return pivot_distance
 
     def calc_shortest_paths(self):
@@ -261,7 +262,7 @@ class GPnetBase:
             res = so.minimize(
                 fun=self.logPosterior,
                 x0=self.theta,
-                args=(self.training_nodes, self.t),
+                args=(self.training_nodes, self.training_values),
                 method=self.optimize["method"],
                 bounds=self.optimize["bounds"],
                 options={"disp": True},
@@ -369,7 +370,7 @@ class GPnetBase:
         )
 
     def logp(self):
-        return -self.logPosterior(self.theta, self.training_nodes, self.t)
+        return -self.logPosterior(self.theta, self.training_nodes, self.training_values)
 
     def plot_graph(self, filename=False):
         pl.figure(figsize=[15, 9])
@@ -538,5 +539,18 @@ class GPnetBase:
                 params[axidx[1]] = ax2[j]
                 # print(axidx[0], axidx[1])
 
-                lml[i, j] = -self.logPosterior(params, self.training_nodes, self.t)
+                lml[i, j] = -self.logPosterior(params, self.training_nodes, self.training_values)
         return lml
+    
+    
+    def set_training_values(self, training_values):
+        self.training_values = training_values
+        self.training_values.name = "training values"
+
+    def calc_ktot(self):
+        self.ktot = self.kernel(
+            nodes_a=self.Graph.nodes,
+            nodes_b=self.Graph.nodes,
+            theta=self.theta,
+            wantderiv=False,
+        )

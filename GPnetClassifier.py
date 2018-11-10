@@ -72,14 +72,14 @@ class GPnetClassifier(GPnetBase):
             )
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
-            self.t = self.pvtdist[self.training_nodes]
+            #self.t = self.pvtdist[self.training_nodes]
             self.binary_labels = (np.sin(0.6 * self.pvtdist) > 0).replace(
                 {True: 1, False: -1}
             )
-            self.training_labels = self.binary_labels[self.training_nodes]
+            self.training_values = self.binary_labels[self.training_nodes]
 
         else:
-            self.training_labels = training_values
+            self.training_values = training_values
         
         return
             
@@ -94,7 +94,7 @@ class GPnetClassifier(GPnetBase):
         # print("iteration")
         # pag 46 RASMUSSEN-WILLIAMS
         K = self.kernel(data, data, theta, wantderiv=False)
-        # K = kernel(data,data,theta,wantderiv=False)
+
         n = np.shape(targets)[0]
         f = np.zeros((n, 1))
         #        tol = 0.1
@@ -192,7 +192,7 @@ class GPnetClassifier(GPnetBase):
         K = self.kernel(
             self.training_nodes, self.training_nodes, self.theta, wantderiv=False
         )
-        n = np.shape(self.training_labels)[0]
+        n = np.shape(self.training_values)[0]
         kstar = self.kernel(
             self.training_nodes,
             self.test_nodes,
@@ -201,9 +201,9 @@ class GPnetClassifier(GPnetBase):
             measnoise=0,
         )
         (f, logq, a) = self.NRiteration(
-            self.training_nodes, self.training_labels, self.theta
+            self.training_nodes, self.training_values, self.theta
         )
-        targets = self.training_labels.values.reshape(n, 1)
+        targets = self.training_values.values.reshape(n, 1)
         s = np.where(f < 0, f, 0)
         # step 2
         W = np.diag(np.squeeze(np.exp(2 * s - f) / ((np.exp(s) + np.exp(s - f)) ** 2)))
@@ -245,7 +245,7 @@ class GPnetClassifier(GPnetBase):
     def plot_latent(self, filename=False):
         pl.figure()
         pl.clf()
-        pl.plot(self.training_nodes, self.training_labels, "r+", ms=20)
+        pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
 
 #        pl.gca().fill_between(
 #            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
@@ -260,7 +260,7 @@ class GPnetClassifier(GPnetBase):
         pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
         #pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
 
-        loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_labels)
+        loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
 #        pl.title(
 #            "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
 #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
@@ -288,8 +288,8 @@ class GPnetClassifier(GPnetBase):
             self.plot_pos,
             nodelist=self.training_nodes,
             node_color=np.where(
-                self.training_labels[(self.training_nodes)] > 0,
-                self.training_labels[(self.training_nodes)],
+                self.training_values[(self.training_nodes)] > 0,
+                self.training_values[(self.training_nodes)],
                 0,
             ),
             with_labels=True,
