@@ -11,6 +11,7 @@ import pandas as pd
 import random
 import time
 from tqdm import tqdm
+
 # %%
 class iconshapes:
     # circles
@@ -198,7 +199,7 @@ class GPnetBase:
             print((self.totnodes - (self.N + self.n)), " idle nodes")
 
             self.random_assign_nodes()
-            
+
         self.assign_other_nodes()
         self.calc_shortest_paths()
 
@@ -207,7 +208,7 @@ class GPnetBase:
 
         # END INIT #
         return
-    
+
     def pivot_distance(self, pivot=0):
         pivot_distance = pd.Series(
             dict(nx.single_source_shortest_path_length(self.Graph, pivot))
@@ -240,17 +241,17 @@ class GPnetBase:
 
         self.assign_other_nodes()
         return self
-    
+
     def assign_other_nodes(self):
-        
+
         self.other_nodes = (
             set(self.Graph.nodes) - set(self.training_nodes) - set(self.test_nodes)
         )
         self.other_nodes = list(self.other_nodes)
         self.other_nodes.sort()
-        
+
         return self
-    
+
     def is_pos_def(self, test_mat):
         return np.all(np.linalg.eigvals(test_mat) > 0)
 
@@ -308,7 +309,7 @@ class GPnetBase:
 
         cols_to_keepset = nodeset - cols_to_dropset
         rows_to_keepset = nodeset - rows_to_dropset
-        
+
         if self.relabel_nodes == False:
             cols_to_drop = [self.orig_labels_dict[idx] for idx in cols_to_dropset]
             rows_to_drop = [self.orig_labels_dict[idx] for idx in rows_to_dropset]
@@ -319,43 +320,44 @@ class GPnetBase:
             rows_to_drop = list(rows_to_dropset)
             cols_to_keep = list(cols_to_keepset)
             rows_to_keep = list(rows_to_keepset)
-            
+
         # need to keep track of node names somehow
         d1 = len(nodes_a)
         d2 = len(nodes_b)
-        
+
         Lnorm = ss.csc_matrix(nx.normalized_laplacian_matrix(self.Graph))
-        
-        #maybe it's wrong
-#        Lnorm = Lnorm[:, cols_to_keep]
-#        Lnorm = Lnorm[rows_to_keep, :]
-        #ok ofcourse it doesnt work
+
+        # maybe it's wrong
+        #        Lnorm = Lnorm[:, cols_to_keep]
+        #        Lnorm = Lnorm[rows_to_keep, :]
+        # ok ofcourse it doesnt work
         kernel_list = ("diffusion", "regularized_laplacian", "pstep_walk")
-        
-        assert (self.kerneltype in kernel_list), "kerneltype not implemented"
+
+        assert self.kerneltype in kernel_list, "kerneltype not implemented"
         if self.kerneltype == "diffusion":
             assert theta[0] < 1, "Lambda must be < 1" % theta[0]
             K = sl.expm(-theta[0] * Lnorm).toarray()
         elif self.kerneltype == "regularized_laplacian":
-            K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm).toarray()
+            K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0] * Lnorm).toarray()
         elif self.kerneltype == "pstep_walk":
             assert theta[0] >= 2, "a must be >=2" % theta[0]
-            K = np.asarray(np.linalg.matrix_power(theta[0]*np.eye(len(self.Graph.nodes())) - Lnorm, int(theta[1])))
-            
-        #Lnorm2 = ss.csc_matrix(np.eye(len(self.Graph.nodes())) + theta[0]*nx.normalized_laplacian_matrix(self.Graph))
+            K = np.asarray(
+                np.linalg.matrix_power(
+                    theta[0] * np.eye(len(self.Graph.nodes())) - Lnorm, int(theta[1])
+                )
+            )
+
+        # Lnorm2 = ss.csc_matrix(np.eye(len(self.Graph.nodes())) + theta[0]*nx.normalized_laplacian_matrix(self.Graph))
         # DIFFUSION PROCESS KERNEL
-        
-        
-        
+
         # REGULARIZED LAPLACIAN KERNEL
-        #K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm)
-        
-        
-        #P-STEP
-        
-        #K = sl.matrix_power(ss.csc_matrix(theta[0]*np.eye(len(self.Graph.nodes()))) - Lnorm, 3)
-        #K = np.linalg.matrix_power(theta[0]*np.eye(len(nodelist)) - Lnorm.toarray(), 5)
-        
+        # K = sl.inv(np.eye(len(self.Graph.nodes())) + theta[0]*Lnorm)
+
+        # P-STEP
+
+        # K = sl.matrix_power(ss.csc_matrix(theta[0]*np.eye(len(self.Graph.nodes()))) - Lnorm, 3)
+        # K = np.linalg.matrix_power(theta[0]*np.eye(len(nodelist)) - Lnorm.toarray(), 5)
+
         k = np.delete(K, cols_to_drop, axis=0)
         k = np.delete(k, rows_to_drop, axis=1)
 
@@ -477,7 +479,7 @@ class GPnetBase:
         #        else:
         #            plrows = len(plots)//plcols
         plrows = len(plots) // plcols
-        #print(plrows, " - ", plcols, "<")
+        # print(plrows, " - ", plcols, "<")
 
         fig, ax = pl.subplots(plrows, plcols, dpi=300)
         fig.suptitle("LML landscapes", size=10)
@@ -503,7 +505,11 @@ class GPnetBase:
                     [plot[3][1]], [plot[3][0]], marker="o", markersize=5, color="red"
                 )
                 ax[idx].plot(
-                    [plot[2][idxmax[0]]], [plot[1][idxmax[1]]], marker="o", markersize=5, color="blue"
+                    [plot[2][idxmax[0]]],
+                    [plot[1][idxmax[1]]],
+                    marker="o",
+                    markersize=5,
+                    color="blue",
                 )
                 ax[idx].set(
                     xlabel="theta" + str(plot[0][0]),
@@ -515,19 +521,25 @@ class GPnetBase:
             else:
                 if len(plot) == 4:
                     cax = pl.pcolor(plot[2], plot[1], lml)
-                pl.plot([plot[3][1]], [plot[3][0]], marker="o", markersize=5, color="red")
-                pl.plot([plot[2][idxmax[0]]], [plot[1][idxmax[1]]], marker="x", markersize=5, color="blue"
+                pl.plot(
+                    [plot[3][1]], [plot[3][0]], marker="o", markersize=5, color="red"
+                )
+                pl.plot(
+                    [plot[2][idxmax[0]]],
+                    [plot[1][idxmax[1]]],
+                    marker="x",
+                    markersize=5,
+                    color="blue",
                 )
                 pl.xlabel("theta" + str(plot[0][0]))
                 pl.ylabel("theta" + str(plot[0][1]))
                 pl.title(item)
-#                fig.set(
-#                        xlabel="theta" + str(plot[0][0]),
-#                        ylabel="theta" + str(plot[0][1]),
-#                        title=item,
-#                )
+                #                fig.set(
+                #                        xlabel="theta" + str(plot[0][0]),
+                #                        ylabel="theta" + str(plot[0][1]),
+                #                        title=item,
+                #                )
                 pl.colorbar(cax)
-                    
 
     def lml_landscape(self, theta, axidx, ax1, ax2):
         print("> Calculating LML Landscape")
@@ -539,10 +551,11 @@ class GPnetBase:
                 params[axidx[1]] = ax2[j]
                 # print(axidx[0], axidx[1])
 
-                lml[i, j] = -self.logPosterior(params, self.training_nodes, self.training_values)
+                lml[i, j] = -self.logPosterior(
+                    params, self.training_nodes, self.training_values
+                )
         return lml
-    
-    
+
     def set_training_values(self, training_values):
         self.training_values = training_values
         self.training_values.name = "training values"

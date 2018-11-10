@@ -6,7 +6,6 @@ import matplotlib.pylab as pl
 from scipy.special import erf
 
 
-
 class GPnetClassifier(GPnetBase):
     """
     Class for Classifiers
@@ -44,7 +43,7 @@ class GPnetClassifier(GPnetBase):
         theta=[0.1, 0.1, 0.1],
         optimize=False,
         relabel_nodes=False,
-        kerneltype = "diffusion"
+        kerneltype="diffusion",
     ):
 
         super(GPnetClassifier, self).__init__(
@@ -72,7 +71,7 @@ class GPnetClassifier(GPnetBase):
             )
             self.pivot_flag = True
             self.pvtdist = self.pivot_distance(0)
-            #self.t = self.pvtdist[self.training_nodes]
+            # self.t = self.pvtdist[self.training_nodes]
             self.binary_labels = (np.sin(0.6 * self.pvtdist) > 0).replace(
                 {True: 1, False: -1}
             )
@@ -80,11 +79,9 @@ class GPnetClassifier(GPnetBase):
 
         else:
             self.training_values = training_values
-        
+
         return
-            
-    
-    
+
     def logPosterior(self, theta, *args):
         data, targets = args
         (f, logq, a) = self.NRiteration(data, targets, theta)
@@ -247,24 +244,30 @@ class GPnetClassifier(GPnetBase):
         pl.clf()
         pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
 
-#        pl.gca().fill_between(
-#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-#        )
-        pl.errorbar(self.test_nodes, self.fstar,self.s,
-                    barsabove = True,
-                    ecolor = "black",
-                    linewidth = 1,
-                    capsize = 5,
-                    fmt = 'o')
-        
-        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-        #pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        #        pl.gca().fill_between(
+        #            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+        #        )
+        pl.errorbar(
+            self.test_nodes,
+            self.fstar,
+            self.s,
+            barsabove=True,
+            ecolor="black",
+            linewidth=1,
+            capsize=5,
+            fmt="o",
+        )
 
-        loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
-#        pl.title(
-#            "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
-#            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
-#        )
+        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+        # pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+
+        loglikelihood = -self.logPosterior(
+            self.theta, self.training_nodes, self.training_values
+        )
+        #        pl.title(
+        #            "Latent Process Mean and Variance \n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
+        #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
+        #        )
         pl.title("Latent Process Mean and Variance")
         pl.xlabel("nodes")
         pl.ylabel("values")
@@ -344,37 +347,41 @@ class GPnetClassifier(GPnetBase):
     def plot_predict_2d(self, filename=False):
         pl.figure(figsize=[15, 9])
         pl.clf()
-        #pl.plot(self.training_nodes, self.t, "r+", ms=20)
+        # pl.plot(self.training_nodes, self.t, "r+", ms=20)
         if self.pivot_flag == True:
             pl.plot(self.pvtdist)
 
-#        pl.gca().fill_between(
-#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-#        )
-#        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-#        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
-        pl.errorbar(self.test_nodes, self.fstar,self.s,
-                    barsabove = True,
-                    ecolor = "black",
-                    linewidth = 1,
-                    capsize = 5,
-                    fmt = 'o')
+        #        pl.gca().fill_between(
+        #            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+        #        )
+        #        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+        #        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        pl.errorbar(
+            self.test_nodes,
+            self.fstar,
+            self.s,
+            barsabove=True,
+            ecolor="black",
+            linewidth=1,
+            capsize=5,
+            fmt="o",
+        )
         pl.title("Gaussian Process Mean and Variance")
-        #loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
+        # loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.t)
         #        pl.title(
         #            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
         #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
         #        )
-#        pl.title(
-#            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
-#        )
+        #        pl.title(
+        #            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
+        #        )
         pl.xlabel("nodes")
         pl.ylabel("values")
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         # pl.axis([-5, 5, -3, 3])
         return self
-    
+
     def gen_cmap(self):
         self.vmin = 0
         self.vmax = 1

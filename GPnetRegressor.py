@@ -4,6 +4,7 @@ import networkx as nx
 import matplotlib.pylab as pl
 import pandas as pd
 
+
 class GPnetRegressor(GPnetBase):
     """
     Class for Regressors
@@ -47,7 +48,7 @@ class GPnetRegressor(GPnetBase):
         theta=[0.1, 0.1, 0.1],
         optimize=False,
         relabel_nodes=False,
-        kerneltype = "diffusion",
+        kerneltype="diffusion",
     ):
 
         super(GPnetRegressor, self).__init__(
@@ -74,8 +75,6 @@ class GPnetRegressor(GPnetBase):
             self.training_values = training_values
 
         return
-    
-
 
     def predict(self):
         # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
@@ -127,11 +126,11 @@ class GPnetRegressor(GPnetBase):
         self.v = np.linalg.solve(self.L, self.kstar.T)
         self.V = self.kstarstar_diag - np.dot(self.v.T, self.v)
         self.s = np.sqrt(np.diag(self.V))
-        
+
         print("succesfully trained model")
         self.is_trained = True
         self.generate_df()
-        
+
         return self
 
     def logPosterior(self, theta, *args):
@@ -182,57 +181,62 @@ class GPnetRegressor(GPnetBase):
         return -log_likelihood_gradient
 
     def generate_df(self):
-        fstar_series = pd.Series(index = self.test_nodes, data=self.fstar)
-        s_series = pd.Series(index = self.test_nodes, data = self.s)
+        fstar_series = pd.Series(index=self.test_nodes, data=self.fstar)
+        s_series = pd.Series(index=self.test_nodes, data=self.s)
         self.df = pd.DataFrame()
-        self.df = self.df.assign(pvtdist = self.pvtdist, train_vals = self.training_values, fstar = fstar_series, variance_s = s_series)
+        self.df = self.df.assign(
+            pvtdist=self.pvtdist,
+            train_vals=self.training_values,
+            fstar=fstar_series,
+            variance_s=s_series,
+        )
         return self
-    
+
     def gen_cmap(self):
         self.vmin = min(self.training_values.min(), self.fstar.min())
         self.vmax = max(self.training_values.max(), self.fstar.max())
         self.cmap = pl.cm.inferno_r
-        
+
     def plot_predict_2d_old(self, filename=False):
         pl.figure(figsize=[15, 9])
         pl.clf()
-        #pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
-#        pl.gca().fill_between(
-#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-#        )
-#        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-#        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        # pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
+        #        pl.gca().fill_between(
+        #            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+        #        )
+        #        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+        #        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
         errorbar_df = self.df.iloc[list(self.test_nodes)]
-        pl.errorbar(errorbar_df.index,
-                    errorbar_df["fstar"],
-                    errorbar_df["variance_s"],
-                    barsabove = True,
-                    ecolor = "black",
-                    linewidth = 1,
-                    capsize = 5,
-                    fmt = 'o')
+        pl.errorbar(
+            errorbar_df.index,
+            errorbar_df["fstar"],
+            errorbar_df["variance_s"],
+            barsabove=True,
+            ecolor="black",
+            linewidth=1,
+            capsize=5,
+            fmt="o",
+        )
         plot_df = self.df.iloc[list(self.training_nodes)]
-        pl.plot(plot_df.index,
-                plot_df["train_vals"].values,"r+",ms=20)
-#        pl.errorbar(self.test_nodes, self.fstar,self.s,
-#                    barsabove = True,
-#                    ecolor = "black",
-#                    linewidth = 1,
-#                    capsize = 5,
-#                    fmt = 'o')
+        pl.plot(plot_df.index, plot_df["train_vals"].values, "r+", ms=20)
+        #        pl.errorbar(self.test_nodes, self.fstar,self.s,
+        #                    barsabove = True,
+        #                    ecolor = "black",
+        #                    linewidth = 1,
+        #                    capsize = 5,
+        #                    fmt = 'o')
         if self.pivot_flag == True:
             pvt_dist_df = self.df
-            pl.plot(pvt_dist_df.index,
-                    pvt_dist_df["pvtdist"].values)
+            pl.plot(pvt_dist_df.index, pvt_dist_df["pvtdist"].values)
         pl.title("Gaussian Process Mean and Variance")
-        #loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
+        # loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
         #        pl.title(
         #            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
         #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
         #        )
-#        pl.title(
-#            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
-#        )
+        #        pl.title(
+        #            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
+        #        )
         pl.xlabel("nodes")
         pl.ylabel("values")
         if type(filename) is str:
@@ -243,50 +247,50 @@ class GPnetRegressor(GPnetBase):
     def plot_predict_2d(self, filename=False):
         pl.figure(figsize=[15, 9])
         pl.clf()
-        #pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
-#        pl.gca().fill_between(
-#            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
-#        )
-#        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
-#        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
-        errorbar_df = self.df.iloc[list(self.test_nodes)].sort_values(by =["pvtdist"])
-        pl.errorbar(errorbar_df["pvtdist"].values,
-                    errorbar_df["fstar"].values,
-                    errorbar_df["variance_s"].values,
-                    barsabove = True,
-                    ecolor = "black",
-                    linewidth = 1,
-                    capsize = 5,
-                    fmt = 'o')
-        plot_df = self.df.iloc[list(self.training_nodes)].sort_values(by =["pvtdist"])
-        pl.plot(plot_df["pvtdist"].values,
-                plot_df["train_vals"].values,"r+",ms=20)
-#        pl.errorbar(self.test_nodes, self.fstar,self.s,
-#                    barsabove = True,
-#                    ecolor = "black",
-#                    linewidth = 1,
-#                    capsize = 5,
-#                    fmt = 'o')
+        # pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
+        #        pl.gca().fill_between(
+        #            self.test_nodes, self.fstar - self.s, self.fstar + self.s, color="#dddddd"
+        #        )
+        #        pl.plot(self.test_nodes, self.fstar, "ro", ms=4)
+        #        pl.plot(self.test_nodes, self.fstar, "r--", lw=2)
+        errorbar_df = self.df.iloc[list(self.test_nodes)].sort_values(by=["pvtdist"])
+        pl.errorbar(
+            errorbar_df["pvtdist"].values,
+            errorbar_df["fstar"].values,
+            errorbar_df["variance_s"].values,
+            barsabove=True,
+            ecolor="black",
+            linewidth=1,
+            capsize=5,
+            fmt="o",
+        )
+        plot_df = self.df.iloc[list(self.training_nodes)].sort_values(by=["pvtdist"])
+        pl.plot(plot_df["pvtdist"].values, plot_df["train_vals"].values, "r+", ms=20)
+        #        pl.errorbar(self.test_nodes, self.fstar,self.s,
+        #                    barsabove = True,
+        #                    ecolor = "black",
+        #                    linewidth = 1,
+        #                    capsize = 5,
+        #                    fmt = 'o')
         if self.pivot_flag == True:
-            pvt_dist_df = self.df.sort_values(by = ["pvtdist"])
-            pl.plot(pvt_dist_df["pvtdist"].values,
-                    pvt_dist_df["pvtdist"].values)
+            pvt_dist_df = self.df.sort_values(by=["pvtdist"])
+            pl.plot(pvt_dist_df["pvtdist"].values, pvt_dist_df["pvtdist"].values)
         pl.title("Gaussian Process Mean and Variance")
-        #loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
+        # loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
         #        pl.title(
         #            "Valore medio e margini a posteriori\n(length scale: %.3f , constant scale: %.3f , noise variance: %.3f )\n Log-Likelihood: %.3f"
         #            % (self.theta[1], self.theta[0], self.theta[2], loglikelihood)
         #        )
-#        pl.title(
-#            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
-#        )
+        #        pl.title(
+        #            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
+        #        )
         pl.xlabel("nodes")
         pl.ylabel("values")
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
         # pl.axis([-5, 5, -3, 3])
         return self
-    
+
     def plot_predict_graph(self, filename=False):
 
         if self.is_trained == False:
