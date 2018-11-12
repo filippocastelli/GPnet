@@ -235,11 +235,12 @@ class GPnetClassifier(GPnetBase):
 
         print("succesfully trained model")
         self.is_trained = True
+        self.generate_df()
 
         return (self.fstar.T, self.V, self.predicted_probs)
         # return (fstar,V)
 
-    def plot_latent(self, filename=False):
+    def plot_latent_old(self, filename=False):
         pl.figure()
         pl.clf()
         pl.plot(self.training_nodes, self.training_values, "r+", ms=20)
@@ -344,7 +345,52 @@ class GPnetClassifier(GPnetBase):
             pl.savefig(filename, bbox_inches="tight")
         return self
 
-    def plot_predict_2d(self, filename=False):
+    def plot_binary_prediction(self, filename=False):
+        pl.figure(figsize=[15, 9])
+        pl.clf()
+        plot_df = self.df.sort_values(by=["pvtdist"])
+        pl.plot(plot_df["pvtdist"].values, plot_df["predicted_class"].values, "bo", ms=8)
+        pl.plot(plot_df["pvtdist"].values, plot_df["train_vals"].values, "r+", ms=20)
+        if self.pivot_flag == True:
+            pvt_dist_df = self.df.sort_values(by=["pvtdist"])
+            pl.plot(pvt_dist_df["pvtdist"].values, pvt_dist_df["pvtdist"].values)
+        pl.title("Binary Classification")
+        pl.xlabel("pivot distance")
+        pl.ylabel("classification label")
+        if type(filename) is str:
+            pl.savefig(filename, bbox_inches="tight")
+        pl.legend(("training nodes","test nodes"),loc="center right")
+        
+        return self
+    
+    def plot_latent(self, filename=False):
+        pl.figure(figsize=[15, 9])
+        pl.clf()
+        errorbar_df = self.df.iloc[list(self.test_nodes)].sort_values(by=["pvtdist"])
+        pl.errorbar(
+            errorbar_df["pvtdist"].values,
+            errorbar_df["fstar"].values,
+            errorbar_df["variance_s"].values,
+            barsabove=True,
+            ecolor="black",
+            linewidth=1,
+            capsize=5,
+            fmt="o",
+        )
+        plot_df = self.df.iloc[list(self.training_nodes)].sort_values(by=["pvtdist"])
+        pl.plot(plot_df["pvtdist"].values, plot_df["train_vals"].values, "r+", ms=20)
+        if self.pivot_flag == True:
+            pvt_dist_df = self.df.sort_values(by=["pvtdist"])
+            pl.plot(pvt_dist_df["pvtdist"].values, pvt_dist_df["pvtdist"].values)
+        pl.title("Latent Process Mean and Variance")
+        pl.xlabel("pivot distance")
+        pl.ylabel("values")
+        if type(filename) is str:
+            pl.savefig(filename, bbox_inches="tight")
+        # pl.axis([-5, 5, -3, 3])
+        return self
+    
+    def plot_predict_2dold(self, filename=False):
         pl.figure(figsize=[15, 9])
         pl.clf()
         # pl.plot(self.training_nodes, self.t, "r+", ms=20)

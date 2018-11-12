@@ -205,6 +205,10 @@ class GPnetBase:
 
         # init plot stuff
         self.plot_pos = nx.kamada_kawai_layout(self.Graph)
+        
+        # shortest paths
+        self.calc_pivot_distance()
+
 
         # END INIT #
         return
@@ -251,9 +255,6 @@ class GPnetBase:
         self.other_nodes.sort()
 
         return self
-
-    def is_pos_def(self, test_mat):
-        return np.all(np.linalg.eigvals(test_mat) > 0)
 
     def optimize_params(self, gtol=1e-3, maxiter=200, disp=1):
         if self.optimize != False:
@@ -465,12 +466,6 @@ class GPnetBase:
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
 
-    def int_to_list(nodes):
-        if type(nodes) == int:
-            return [nodes]
-        else:
-            return nodes
-
     def plot_lml_landscape(self, plots, params, filename=False):
         pl.rcParams.update({"font.size": 5})
         plcols = 3
@@ -567,3 +562,49 @@ class GPnetBase:
             theta=self.theta,
             wantderiv=False,
         )
+        
+    def int_to_list(nodes):
+        if type(nodes) == int:
+            return [nodes]
+        else:
+            return nodes    
+        
+    def is_pos_def(self, test_mat):
+        return np.all(np.linalg.eigvals(test_mat) > 0)
+    
+    
+    def generate_df(self):
+        fstar_series = pd.Series(index=self.test_nodes, data=self.fstar)
+        s_series = pd.Series(index=self.test_nodes, data=self.s)
+        
+        try:
+            self.predicted_probs
+        except AttributeError:
+            probs_series0 = pd.Series(index = self.test_nodes)
+            probs_series1 = pd.Series(index = self.test_nodes)
+            predicted_class_series = pd.Series(index = self.test_nodes)
+        else:
+            probs_series0 = pd.Series(index = self.test_nodes, data=self.predicted_probs.T[0])
+            probs_series1 = pd.Series(index = self.test_nodes, data=self.predicted_probs.T[1])
+
+        predicted_class_series = probs_series0.copy()
+        predicted_class_series[predicted_class_series >0.5] = 1
+        predicted_class_series[predicted_class_series <= 0.5] = -1            
+        
+        self.df = pd.DataFrame()
+        self.df = self.df.assign(
+            pvtdist=self.pvtdist,
+            train_vals=self.training_values,
+            fstar=fstar_series,
+            variance_s=s_series,
+            prob_0 = probs_series0,
+            prob_1 = probs_series1,
+            predicted_class = -predicted_class_series
+        )
+        
+        return self
+    
+    def calc_pivot_distance(self):
+        self.pvtdist = self.pivot_distance(list(self.Graph.nodes)[0])
+        return self
+        

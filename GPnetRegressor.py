@@ -66,16 +66,16 @@ class GPnetRegressor(GPnetBase):
             relabel_nodes,
             kerneltype,
         )
+        
         self.pivot_flag = False
         if training_values == False:
             self.pivot_flag = True
-            self.pvtdist = self.pivot_distance(list(self.Graph.nodes)[0])
             self.training_values = self.pvtdist[self.training_nodes]
         else:
             self.training_values = training_values
-
+            
         return
-
+    
     def predict(self):
         # predicts the same exact results as GPnetRegressor.predict(), just reimplemented using Algorithm 2.1 in Rasmussen to make sure it was not the problem
         self.optimize_params()
@@ -180,17 +180,7 @@ class GPnetRegressor(GPnetBase):
         print(log_likelihood_gradient)
         return -log_likelihood_gradient
 
-    def generate_df(self):
-        fstar_series = pd.Series(index=self.test_nodes, data=self.fstar)
-        s_series = pd.Series(index=self.test_nodes, data=self.s)
-        self.df = pd.DataFrame()
-        self.df = self.df.assign(
-            pvtdist=self.pvtdist,
-            train_vals=self.training_values,
-            fstar=fstar_series,
-            variance_s=s_series,
-        )
-        return self
+
 
     def gen_cmap(self):
         self.vmin = min(self.training_values.min(), self.fstar.min())
@@ -225,9 +215,9 @@ class GPnetRegressor(GPnetBase):
         #                    linewidth = 1,
         #                    capsize = 5,
         #                    fmt = 'o')
-        if self.pivot_flag == True:
-            pvt_dist_df = self.df
-            pl.plot(pvt_dist_df.index, pvt_dist_df["pvtdist"].values)
+#        if self.pivot_flag == True:
+#            pvt_dist_df = self.df
+#            pl.plot(pvt_dist_df.index, pvt_dist_df["pvtdist"].values)
         pl.title("Gaussian Process Mean and Variance")
         # loglikelihood = -self.logPosterior(self.theta, self.training_nodes, self.training_values)
         #        pl.title(
@@ -284,7 +274,7 @@ class GPnetRegressor(GPnetBase):
         #        pl.title(
         #            "Valore medio e margini a posteriori\n(lambda: %.3f)" % (self.theta[0])
         #        )
-        pl.xlabel("nodes")
+        pl.xlabel("pivot distance")
         pl.ylabel("values")
         if type(filename) is str:
             pl.savefig(filename, bbox_inches="tight")
