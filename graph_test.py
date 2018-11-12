@@ -33,7 +33,7 @@ gpr = GPnetRegressor(Graph = G,
 gpr.plot_graph()
 _ = gpr.predict()
 gpr.plot_predict_2d()
-gpr.plot_predict_2d_old()
+#gpr.plot_predict_2d_old()
 
 
 #%%
@@ -61,3 +61,4 @@ gpc.predict()
 gpc.plot_graph()
 gpc.plot_latent()
 gpc.plot_predict_graph()
+gpc.plot_binary_prediction()
