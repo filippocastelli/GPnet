@@ -7,7 +7,7 @@ The code is loosely inspired on the code from Chapter 18 of Machine Learning: An
 * **GPnetRegressor** provides basic regression functionality for functions defined on graph nodes
 * **GPnetClassfier** provides classification of test nodes, given a set of -1/+1 labels for the training nodes
 
-The only kernel available at the moment is a _squared exponential_ kernel, more kernels and custom kernel composition will be added in the future
+Available kernels are based on graph node kernels by Kondor et al.
 
 **update**: kernel composition is already possible via custom function definitions: "soft" kernel composition is yet to be implemented.
 
